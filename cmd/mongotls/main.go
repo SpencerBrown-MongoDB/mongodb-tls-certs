@@ -4,7 +4,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
-	"github.com/SpencerBrown/mongodb-x509/mx509"
+	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
 	"log"
 	"os"
 )

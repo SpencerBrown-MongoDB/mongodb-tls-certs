@@ -1,3 +1,3 @@
-module github.com/SpencerBrown/mongodb-x509
+module github.com/SpencerBrown/mongodb-tls-certs
 
 go 1.17

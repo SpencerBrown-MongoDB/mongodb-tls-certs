@@ -12,6 +12,14 @@ import (
 	"time"
 )
 
+const (
+	CreateRootCACert = iota
+	CreateIntermediateCACert
+	CreateOCSPSigningCert
+	CreateServerCert
+	CreateClientCert
+)
+
 type CertParameters struct {
 	O       string
 	OU      string
@@ -19,89 +27,10 @@ type CertParameters struct {
 	Servers []string
 }
 
-// GetPrivateKey gets the private kay from a PEM-format byte slice
-func GetPrivateKey(pemKey []byte) (crypto.PrivateKey, error) {
-	pemBlock, _ := pem.Decode(pemKey)
-	if pemBlock == nil || pemBlock.Type != "PRIVATE KEY" {
-		return nil, fmt.Errorf("invalid PEM private key")
-	}
-	parsedKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing private key: %v", err)
-	}
-	rsaKey, ok := parsedKey.(*rsa.PrivateKey)
-	if !ok {
-		return nil, fmt.Errorf("private key type not recognized")
-	}
-	return rsaKey, nil
-}
-
-// GetCertificate gets the certificate from a PEM-format byte slice
-func GetCertificate(pemCert []byte) (*x509.Certificate, error) {
-	pemBlock, _ := pem.Decode(pemCert)
-	if pemBlock == nil || pemBlock.Type != "CERTIFICATE" {
-		return nil, fmt.Errorf("invalid PEM certificate")
-	}
-	cert, err := x509.ParseCertificate(pemBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("error parsing X.509 certificate: %v", err)
-	}
-	return cert, nil
-}
-
-// CreateRootCA creates a root CA certificate from a private key
-// returned as a byte slice PEM-formatted
-func CreateRootCA(key crypto.PrivateKey, parms *CertParameters) ([]byte, error) {
-
-	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
-	// KeyUsage bits set in the x509.Certificate template
-	keyUsage := x509.KeyUsageDigitalSignature
-	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In
-	// the context of TLS this KeyUsage is particular to RSA key exchange and
-	// authentication.
-	keyUsage |= x509.KeyUsageKeyEncipherment
-	// Allow certificate signing
-	keyUsage |= x509.KeyUsageCertSign
-
-	var notBefore time.Time
-	notBefore = time.Now()
-	notAfter := notBefore.AddDate(10, 0, 0) // good for 10 years
-
-	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
-	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate serial number: %v", err)
-	}
-
-	template := x509.Certificate{
-		SerialNumber: serialNumber,
-		Subject: pkix.Name{
-			Organization:       []string{parms.O},
-			OrganizationalUnit: []string{parms.OU},
-			CommonName:         parms.CN,
-		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              keyUsage,
-		BasicConstraintsValid: true,
-		IsCA:                  true,
-	}
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, publicKey(key), key)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate: %v", err)
-	}
-	certBlk := pem.Block{
-		Type:    "CERTIFICATE",
-		Headers: nil,
-		Bytes:   derBytes,
-	}
-	return pem.EncodeToMemory(&certBlk), nil
-}
-
-// CreateServerCert creates a server certificate from a private key and a CA
-// returned as a byte slice PEM-formatted
-func CreateServerCert(key crypto.PrivateKey, parms *CertParameters, CAkey crypto.PrivateKey, CACert *x509.Certificate) ([]byte, error) {
+// CreateCert creates a certificate from a private key and a CA or self-signed
+// a flag controls what kind of certificate is generated
+// returns the certificate, and a byte slice PEM-formatted version
+func CreateCert(createType int, key crypto.PrivateKey, parms *CertParameters, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
 
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
@@ -118,7 +47,7 @@ func CreateServerCert(key crypto.PrivateKey, parms *CertParameters, CAkey crypto
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate serial number: %v", err)
+		return nil, nil, fmt.Errorf("failed to generate serial number: %v", err)
 	}
 
 	template := x509.Certificate{
@@ -128,28 +57,68 @@ func CreateServerCert(key crypto.PrivateKey, parms *CertParameters, CAkey crypto
 			OrganizationalUnit: []string{parms.OU},
 			CommonName:         parms.CN,
 		},
-		NotBefore: notBefore,
-		NotAfter:  notAfter,
-
-		KeyUsage:              keyUsage,
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
 		BasicConstraintsValid: true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-
-		DNSNames: parms.Servers,
 	}
 
-	derBytes, err := x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	var derBytes []byte
+	switch createType {
+	case CreateServerCert: // Can authenticate as client or server, has SAN with DNS names
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+		template.DNSNames = parms.Servers
+		template.KeyUsage = keyUsage
+		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	case CreateClientCert: // Can authenticate as client
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
+		template.KeyUsage = keyUsage
+		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	case CreateRootCACert: // Can sign certificates, is a CA
+		template.IsCA = true
+		keyUsage |= x509.KeyUsageCertSign
+		template.KeyUsage = keyUsage
+		derBytes, err = x509.CreateCertificate(rand.Reader, &template, &template, publicKey(key), key)
+	case CreateIntermediateCACert: // Can sign certificates, is a CA
+		template.IsCA = true
+		keyUsage |= x509.KeyUsageCertSign
+		keyUsage |= x509.KeyUsageCRLSign
+		template.KeyUsage = keyUsage
+		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	case CreateOCSPSigningCert: // Can sign OCSP responses
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageOCSPSigning}
+		template.KeyUsage = keyUsage
+		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	}
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create certificate: %v", err)
+		return nil, nil, fmt.Errorf("failed to create certificate: %v", err)
+	}
+	cert, err := x509.ParseCertificate(derBytes)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to parse der bytes: %v", err)
 	}
 	certBlk := pem.Block{
 		Type:    "CERTIFICATE",
 		Headers: nil,
 		Bytes:   derBytes,
 	}
-	return pem.EncodeToMemory(&certBlk), nil
+	return cert, pem.EncodeToMemory(&certBlk), nil
 }
 
+// GetCertificate gets the certificate from a PEM-format byte slice
+func GetCertificate(pemCert []byte) (*x509.Certificate, error) {
+	pemBlock, _ := pem.Decode(pemCert)
+	if pemBlock == nil || pemBlock.Type != "CERTIFICATE" {
+		return nil, fmt.Errorf("invalid PEM certificate")
+	}
+	cert, err := x509.ParseCertificate(pemBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing X.509 certificate: %v", err)
+	}
+	return cert, nil
+}
+
+// publicKey gets the public key from a private key
 func publicKey(key crypto.PrivateKey) crypto.PublicKey {
 	return &key.(*rsa.PrivateKey).PublicKey
 }

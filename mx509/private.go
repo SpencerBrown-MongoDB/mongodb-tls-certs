@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"fmt"
 )
 
 // CreatePrivateKey returns a PKCS#8 formatted private key which is not encrypted
@@ -31,4 +32,21 @@ func CreatePrivateKey() (crypto.PrivateKey, []byte, error) {
 		Bytes:   privDer,
 	}
 	return key, pem.EncodeToMemory(&privBlk), nil
+}
+
+// GetPrivateKey gets the private kay from a PEM-format byte slice
+func GetPrivateKey(pemKey []byte) (crypto.PrivateKey, error) {
+	pemBlock, _ := pem.Decode(pemKey)
+	if pemBlock == nil || pemBlock.Type != "PRIVATE KEY" {
+		return nil, fmt.Errorf("invalid PEM private key")
+	}
+	parsedKey, err := x509.ParsePKCS8PrivateKey(pemBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing private key: %v", err)
+	}
+	rsaKey, ok := parsedKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("private key type not recognized")
+	}
+	return rsaKey, nil
 }

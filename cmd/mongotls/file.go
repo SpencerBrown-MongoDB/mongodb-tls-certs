@@ -60,6 +60,16 @@ func createCAFile(filenames []string, chainFilename string) error {
 	return nil
 }
 
+// createKeyFile writes a keyfile
+func createKeyFile(filename string) error {
+	key := mx509.CreateKeyFile()
+	err := writeFile(filename, keyExtension, key, true)
+	if err != nil {
+		return fmt.Errorf("error writing keyfile: %v", err)
+	}
+	return nil
+}
+
 // createPrivateKey creates private key and writes it to the file "<prefix>.key" in PEM format
 func createPrivateKey(prefix string) (crypto.PrivateKey, error) {
 	key, PEMkey, err := mx509.CreatePrivateKey()

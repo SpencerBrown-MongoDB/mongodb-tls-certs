@@ -55,4 +55,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("error writing CAFile: %v", err)
 	}
+
+	// Create a keyfile; can be used for local encryption key or replica set authentication keyfile
+	err = createKeyFile(KeyFileFilename)
+	if err != nil {
+		log.Fatalf("Error writing keyfile: %v", err)
+	}
 }

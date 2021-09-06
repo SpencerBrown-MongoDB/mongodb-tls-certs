@@ -14,6 +14,7 @@ const (
 	clientFilename         = "client"
 	certificateKeyFilename = "key-cert"
 	CAFileFilename         = "ca-chain"
+	KeyFileFilename        = "keyfile"
 )
 
 const (

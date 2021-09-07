@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"math/big"
+	"net"
 	"time"
 )
 
@@ -21,10 +22,11 @@ const (
 )
 
 type CertParameters struct {
-	O       string
-	OU      string
-	CN      string
-	Servers []string
+	O           string   // Organization
+	OU          string   // Organizational unit
+	CN          string   // Common name
+	DNSNames    []string // Hostnames for SAN
+	IPAddresses []net.IP // IP addresses for SAN
 }
 
 // CreateCert creates a certificate from a private key and a CA or self-signed
@@ -66,7 +68,8 @@ func CreateCert(createType int, key crypto.PrivateKey, parms *CertParameters, CA
 	switch createType {
 	case CreateServerCert: // Can authenticate as client or server, has SAN with DNS names
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-		template.DNSNames = parms.Servers
+		template.DNSNames = parms.DNSNames
+		template.IPAddresses = parms.IPAddresses
 		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
 	case CreateClientCert: // Can authenticate as client
@@ -102,6 +105,7 @@ func CreateCert(createType int, key crypto.PrivateKey, parms *CertParameters, CA
 		Headers: nil,
 		Bytes:   derBytes,
 	}
+
 	return cert, pem.EncodeToMemory(&certBlk), nil
 }
 

@@ -7,6 +7,8 @@ import (
 
 func main() {
 
+	_ = options()
+
 	// Create Root CA key and certificate
 	rootCAKey, rootCACert, err := createKeyCert(mx509.CreateRootCACert, rootCAFilename, &rootCAParms, nil, nil)
 	if err != nil {

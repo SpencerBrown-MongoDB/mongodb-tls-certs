@@ -8,32 +8,17 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"github.com/SpencerBrown/mongodb-tls-certs/config"
 	"math/big"
 	"net"
 	"time"
 )
 
-const (
-	CreateRootCACert = iota
-	CreateIntermediateCACert
-	CreateOCSPSigningCert
-	CreateServerCert
-	CreateClientCert
-)
-
-type CertParameters struct {
-	O           string   // Organization
-	OU          string   // Organizational unit
-	CN          string   // Common name
-	DNSNames    []string // Hostnames for SAN
-	IPAddresses []net.IP // IP addresses for SAN
-}
-
 // CreateCert creates a certificate from a private key and a CA or self-signed
 // a flag controls what kind of certificate is generated
 // returns the certificate, and a byte slice PEM-formatted version
-func CreateCert(createType int, key crypto.PrivateKey, parms *CertParameters, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
-
+func CreateCert(createType int, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
+	certConfig := config.Config.Certs[createType]
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
@@ -55,9 +40,9 @@ func CreateCert(createType int, key crypto.PrivateKey, parms *CertParameters, CA
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization:       []string{parms.O},
-			OrganizationalUnit: []string{parms.OU},
-			CommonName:         parms.CN,
+			Organization:       []string{certConfig.O},
+			OrganizationalUnit: []string{certConfig.OU},
+			CommonName:         certConfig.CN,
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
@@ -66,30 +51,39 @@ func CreateCert(createType int, key crypto.PrivateKey, parms *CertParameters, CA
 
 	var derBytes []byte
 	switch createType {
-	case CreateServerCert: // Can authenticate as client or server, has SAN with DNS names
+	case config.ServerCert: // Can authenticate as client or server, has SAN with DNS names
+		var DNSNames = make([]string, 0)
+		var IPAddresses = make([]net.IP, 0)
+		for _, h := range certConfig.Hosts {
+			if ip := net.ParseIP(h); ip != nil {
+				IPAddresses = append(IPAddresses, ip)
+			} else {
+				DNSNames = append(DNSNames, h)
+			}
+		}
+		template.DNSNames = DNSNames
+		template.IPAddresses = IPAddresses
+		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
-		template.DNSNames = parms.DNSNames
-		template.IPAddresses = parms.IPAddresses
-		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case CreateClientCert: // Can authenticate as client
+	case config.ClientCert: // Can authenticate as client
+		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
-		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case CreateRootCACert: // Can sign certificates, is a CA
+	case config.RootCACert: // Can sign certificates, is a CA
 		template.IsCA = true
 		keyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, &template, publicKey(key), key)
-	case CreateIntermediateCACert: // Can sign certificates, is a CA
+	case config.IntermediateCACert: // Can sign certificates, is a CA
 		template.IsCA = true
 		keyUsage |= x509.KeyUsageCertSign
 		keyUsage |= x509.KeyUsageCRLSign
 		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case CreateOCSPSigningCert: // Can sign OCSP responses
-		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageOCSPSigning}
+	case config.OCSPSigningCert: // Can sign OCSP responses
 		template.KeyUsage = keyUsage
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageOCSPSigning}
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
 	}
 

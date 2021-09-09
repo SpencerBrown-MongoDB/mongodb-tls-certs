@@ -47,7 +47,7 @@ type Type struct {
 	Directories  map[string]string   `yaml:"directories"`
 	Extensions   map[string]string   `yaml:"extensions"`
 	KeyFiles     []string            `yaml:"keyfiles"`
-	Certificates map[string]Cert     `yaml:"certificates"`
+	Certificates map[string]*Cert    `yaml:"certificates"`
 	Combos       map[string][]string `yaml:"combos"`
 	// filled in programmatically
 	PublicDirectory  string `yaml:"-"`
@@ -132,13 +132,3 @@ func GetConfig(configFilename *string) error {
 	}
 	return nil
 }
-
-//func main() {
-//	cfn := "config/config.yaml"
-//	err := GetConfig(&cfn)
-//	if err != nil {
-//		log.Fatalf("Error getting config: %v", err)
-//	}
-//	fmt.Printf("config: %#v\n", Config)
-//	fmt.Printf("server: %#v\n", Config.Certificates["server"])
-//}

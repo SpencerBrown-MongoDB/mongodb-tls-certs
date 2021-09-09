@@ -62,6 +62,9 @@ combos:
   server-key-cert:
     - server.key
     - server.pem
+  client-key-cert:
+    - client.key
+    - client.pem
   ca-chain:
     - signing-ca.pem
     - root-ca.pem

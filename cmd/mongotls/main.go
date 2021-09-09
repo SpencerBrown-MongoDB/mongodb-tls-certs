@@ -10,7 +10,7 @@ import (
 func main() {
 
 	var (
-		configFilename = flag.String("f", "config/config.yaml", "Config file path/name")
+		configFilename = flag.String("f", "mongodb-tls.yaml", "Config file path/name")
 	)
 	flag.Parse()
 
@@ -30,59 +30,9 @@ func main() {
 		log.Fatalf("Error creating combination files: %v", err)
 	}
 
-	//// Create Root CA key and certificate
-	//rootCAKey, rootCACert, err := createKeyCert(config.RootCACert, nil, nil)
-	//if err != nil {
-	//	log.Fatalf("Error creating %s key/certificate: %v", config.Config.Certs[config.RootCACert].Filename, err)
-	//}
-	//
-	//// Create Signing intermediate CA key and certificate
-	//signingCAKey, signingCACert, err := createKeyCert(config.IntermediateCACert, rootCAKey, rootCACert)
-	//if err != nil {
-	//	log.Fatalf("Error creating %s key/certificate: %v", config.Config.Certs[config.IntermediateCACert].Filename, err)
-	//}
-	//
-	//// create Server private key and certificate
-	//_, _, err = createKeyCert(config.ServerCert, signingCAKey, signingCACert)
-	//if err != nil {
-	//	log.Fatalf("Error creating %s key/certificate: %v", config.Config.Certs[config.ServerCert].Filename, err)
-	//}
-	//
-	//// create Client private key and certificate
-	//_, _, err = createKeyCert(config.ClientCert, signingCAKey, signingCACert)
-	//if err != nil {
-	//	log.Fatalf("Error creating %s key/certificate: %v", config.Config.Certs[config.ClientCert].Filename, err)
-	//}
-	//
-	//// create OCSP signing private key and certificate
-	//_, _, err = createKeyCert(config.OCSPSigningCert, signingCAKey, signingCACert)
-	//if err != nil {
-	//	log.Fatalf("Error creating %s key/certificate: %v", config.Config.Certs[config.OCSPSigningCert].Filename, err)
-	//}
-
-	// Create the server's certificateKeyFile
-	err = createCertificateKeyFile(config.Config.Certs[config.ServerCert].Filename, config.Config.Certs[config.CertificateKeyFile].Filename)
+	err = createKeyFiles()
 	if err != nil {
-		log.Fatalf("Errir writing server certificateKeyFile: %v", err)
-	}
-
-	// Create the client's certificateKeyFile
-	err = createCertificateKeyFile(config.Config.Certs[config.ClientCert].Filename, config.Config.Certs[config.CertificateKeyFile].Filename)
-	if err != nil {
-		log.Fatalf("Errir writing client certificateKeyFile: %v", err)
-	}
-
-	// Create the CAFile
-	CAFiles := []string{config.Config.Certs[config.IntermediateCACert].Filename, config.Config.Certs[config.RootCACert].Filename}
-	err = createCAFile(CAFiles, config.Config.Certs[config.CAFile].Filename)
-	if err != nil {
-		log.Fatalf("error writing CAFile: %v", err)
-	}
-
-	// Create a keyfile; can be used for local encryption key or replica set authentication keyfile
-	err = createKeyFile()
-	if err != nil {
-		log.Fatalf("Error writing keyfile: %v", err)
+		log.Fatalf("Error creating keyfiles: %v", err)
 	}
 }
 
@@ -99,7 +49,7 @@ func createCerts() error {
 			if cert.Certificate == nil {
 				if cert.Type == config.RootCACert {
 					// self-signed, just create it
-					cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, &cert, nil, nil)
+					cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, cert, nil, nil)
 					if err != nil {
 						return fmt.Errorf("error creating certificate %s: %v", certName, err)
 					}
@@ -109,7 +59,7 @@ func createCerts() error {
 					if issuerCert.Certificate == nil {
 						allCreated = false // this one has to wait until its issuer is created
 					} else {
-						cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, &cert, issuerCert.PrivateKey, issuerCert.Certificate)
+						cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, cert, issuerCert.PrivateKey, issuerCert.Certificate)
 					}
 				}
 			}
@@ -126,6 +76,16 @@ func createCombos() error {
 		err := createCombo(comboName, comboList)
 		if err != nil {
 			return fmt.Errorf("error creating combo file '%s': %v", comboName, err)
+		}
+	}
+	return nil
+}
+
+func createKeyFiles() error {
+	for _, fn := range config.Config.KeyFiles {
+		err := createKeyFile(fn)
+		if err != nil {
+			log.Fatalf("Error creating keyfile '%s': %v", fn, err)
 		}
 	}
 	return nil

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/SpencerBrown/mongodb-tls-certs/config"
 	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,54 +20,41 @@ func createKeyCert(certName string, configCert *config.Cert, CAkey crypto.Privat
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating %s private key: %v", certName, err)
 	}
-	cert, err := createCert(configCert, privateKey, CAkey, CACert)
+	cert, err := createCert(certName, configCert, privateKey, CAkey, CACert)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating %s certificate: %v", certName, err)
 	}
 	return privateKey, cert, nil
 }
 
-// createCertificateKeyFile writes a combination key/certificate PEM file
-func createCertificateKeyFile(filename string, certificateKeyFilename string) error {
-	KeyPEM, err := readFile(filename, config.Config.KeyExtension)
-	if err != nil {
-		return fmt.Errorf("error reading %s key file: %v", filename, err)
-	}
-	certPEM, err := readFile(filename, config.Config.CertExtension)
-	if err != nil {
-		return fmt.Errorf("error reading %s certificate file: %v", filename, err)
-	}
-	keyCertPEM := append(KeyPEM, certPEM...)
-	err = writeFile(filename+"-"+certificateKeyFilename, config.Config.CertExtension, keyCertPEM, true)
-	if err != nil {
-		log.Fatalf("Error writing %s key/certificate file: %v", certificateKeyFilename, err)
-	}
-	return nil
-}
-
-// createCAFile writes a number of certificate files into one CAFile
-func createCAFile(filenames []string, chainFilename string) error {
-	CAFilePEM := make([]byte, 0, 2000)
-	for _, filename := range filenames {
-		CACertPEM, err := readFile(filename, config.Config.CertExtension)
-		if err != nil {
-			return fmt.Errorf("error reading %s cert file: %v", filename, err)
+func createCombo(comboName string, comboList []string) error {
+	comboPEM := make([]byte, 0)
+	isPrivate := false
+	for _, fnext := range comboList {
+		ext := (filepath.Ext(fnext))[1:]
+		if ext == config.Config.ExtensionKey {
+			isPrivate = true
 		}
-		CAFilePEM = append(CAFilePEM, CACertPEM...)
+		name := fnext[:len(fnext)-len(ext)-1]
+		thisPEM, err := readFile(name, ext)
+		if err != nil {
+			return fmt.Errorf("error reading file '%s': %v", fnext, err)
+		}
+		comboPEM = append(comboPEM, thisPEM...)
 	}
-	err := writeFile(chainFilename, config.Config.CertExtension, CAFilePEM, false)
+	err := writeFile(comboName, config.Config.ExtensionCert, comboPEM, isPrivate)
 	if err != nil {
-		return fmt.Errorf("error writing %s CAFile: %v", chainFilename, err)
+		return fmt.Errorf("error writing combo file '%s': %v", comboName, err)
 	}
 	return nil
 }
 
 // createKeyFile writes a keyfile
-func createKeyFile() error {
+func createKeyFile(filename string) error {
 	key := mx509.CreateKeyFile()
-	err := writeFile(config.Config.KeyFile.Filename, config.Config.KeyExtension, key, true)
+	err := writeFile(filename, config.Config.ExtensionKey, key, true)
 	if err != nil {
-		return fmt.Errorf("error writing keyfile: %v", err)
+		return fmt.Errorf("error writing keyfile '%s': %v", filename, err)
 	}
 	return nil
 }
@@ -85,7 +73,7 @@ func createPrivateKey(filename string, ext string) (crypto.PrivateKey, error) {
 }
 
 func createCert(certName string, configCert *config.Cert, key crypto.PrivateKey, CAKey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, error) {
-	cert, PEMcert, err := mx509.CreateCert(configCert.Type, key, CAKey, CACert)
+	cert, PEMcert, err := mx509.CreateCert(configCert, key, CAKey, CACert)
 	if err != nil {
 		return nil, fmt.Errorf("error creating %s certificate: %v", certName, err)
 	}
@@ -124,16 +112,22 @@ func getCertificate(prefix string, extension string) (*x509.Certificate, error) 
 
 // writeFile writes file <prefix>.<extension> with content, and marks it world-readable or user-readable
 func writeFile(prefix string, extension string, content []byte, private bool) error {
-	tlsDirectory := config.Config.Directory
-	err := os.MkdirAll(tlsDirectory, 0755)
+	err := os.MkdirAll(config.Config.PublicDirectory, 0755)
 	if err != nil {
-		return fmt.Errorf("error creating directory %s: %v", tlsDirectory, err)
+		return fmt.Errorf("error creating public directory %s: %v", config.Config.PublicDirectory, err)
+	}
+	err = os.MkdirAll(config.Config.PrivateDirectory, 0755)
+	if err != nil {
+		return fmt.Errorf("error creating private directory %s: %v", config.Config.PrivateDirectory, err)
 	}
 	fn := prefix + "." + extension
-	fn = filepath.Join(tlsDirectory, fn)
-	perms := os.FileMode(0644)
+	var perms fs.FileMode
 	if private {
+		fn = filepath.Join(config.Config.PrivateDirectory, fn)
 		perms = os.FileMode(0600)
+	} else {
+		fn = filepath.Join(config.Config.PublicDirectory, fn)
+		perms = os.FileMode(0644)
 	}
 	err = os.WriteFile(fn, content, perms)
 	if err != nil {
@@ -145,9 +139,17 @@ func writeFile(prefix string, extension string, content []byte, private bool) er
 
 // readFile reads <prefix>.<extension> and returns slice of bytes
 func readFile(prefix string, extension string) ([]byte, error) {
-	tlsDirectory := config.Config.Directory
+	var readDir string
+	switch extension {
+	case config.Config.ExtensionCert:
+		readDir = config.Config.PublicDirectory
+	case config.Config.ExtensionKey:
+		readDir = config.Config.PrivateDirectory
+	default:
+		return nil, fmt.Errorf("file extension not recognized: %s", extension)
+	}
 	fn := prefix + "." + extension
-	fn = filepath.Join(tlsDirectory, fn)
+	fn = filepath.Join(readDir, fn)
 	content, err := os.ReadFile(fn)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file %s: %v", fn, err)

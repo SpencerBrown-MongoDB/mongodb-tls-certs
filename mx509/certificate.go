@@ -17,8 +17,7 @@ import (
 // CreateCert creates a certificate from a private key and a CA or self-signed
 // a flag controls what kind of certificate is generated
 // returns the certificate, and a byte slice PEM-formatted version
-func CreateCert(createType int, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
-	certConfig := config.Config.Certs[createType]
+func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
@@ -40,9 +39,9 @@ func CreateCert(createType int, key crypto.PrivateKey, CAkey crypto.PrivateKey, 
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization:       []string{certConfig.O},
-			OrganizationalUnit: []string{certConfig.OU},
-			CommonName:         certConfig.CN,
+			Organization:       []string{configCert.Subject.O},
+			OrganizationalUnit: []string{configCert.Subject.OU},
+			CommonName:         configCert.Subject.CN,
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
@@ -50,11 +49,11 @@ func CreateCert(createType int, key crypto.PrivateKey, CAkey crypto.PrivateKey, 
 	}
 
 	var derBytes []byte
-	switch createType {
+	switch configCert.Type {
 	case config.ServerCert: // Can authenticate as client or server, has SAN with DNS names
 		var DNSNames = make([]string, 0)
 		var IPAddresses = make([]net.IP, 0)
-		for _, h := range certConfig.Hosts {
+		for _, h := range configCert.Hosts {
 			if ip := net.ParseIP(h); ip != nil {
 				IPAddresses = append(IPAddresses, ip)
 			} else {

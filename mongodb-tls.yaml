@@ -1,70 +1,68 @@
+# Directories where files will be written.
 directories:
   # files with only certificates are placed here
   public: tls
   # files with keys are placed here
   private: tls/private
 
+# Extensions for created files.
 extensions:
   # extension added to files with only keys
   key: key
   # extension used for files with certificates (perhaps also with keys)
   certificate: pem
 
-# keyfiles are files with 32 random bytes stored in base64 format (44 bytes total)
+# Defaults for subject name components.
+# Any certificate that does not specify some of these components receives this default value.
+subject:
+  O: MongoDB
+  CN: Repro
+
+# Create keyfiles; keyfiles are files with 32 random bytes stored in base64 format (44 bytes total)
 keyfiles:
   - keyfile
 
-# Certificates and keys
+# Create certificates and keys
 certificates:
   root-ca:
-    type: RootCA
+    type: rootCA
     subject:
       O: MongoDB
       OU: Root-CA
       CN: Repro
-
   signing-ca:
-    type: IntermediateCA
+    type: intermediateCA
     issuer: root-ca
     subject:
-      O: MongoDB
       OU: Signing-CA
-      CN: Repro
-
   ocsp:
     type: OCSPSigning
     issuer: signing-ca
     subject:
-      O: MongoDB
       OU: OCSP Response Signing
-      CN: Repro
-
   server:
     type: server
     issuer: signing-ca
     subject:
-      O: MongoDB
       OU: Server
-      CN: Repro
     hosts:
       - mongodb-local.computer
-
   client:
     type: client
     issuer: signing-ca
     subject:
-      O: MongoDB
       OU: Client
-      CN: Repro
 
-# Combined files
+# Create combined files
 combos:
+  # the certificateKeyFile combined file
   server-key-cert:
     - server.key
     - server.pem
   client-key-cert:
     - client.key
     - client.pem
+  # the combined file with the CA certificate chain
   ca-chain:
     - signing-ca.pem
     - root-ca.pem

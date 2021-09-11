@@ -29,6 +29,13 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 	var notBefore time.Time
 	notBefore = time.Now()
 	notAfter := notBefore.AddDate(0, 0, 90) // good for 90 days
+	var org, orgUnit []string
+	if configCert.Subject.O != "" {
+		org = []string{configCert.Subject.O}
+	}
+	if configCert.Subject.OU != "" {
+		orgUnit = []string{configCert.Subject.OU}
+	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
 	serialNumber, err := rand.Int(rand.Reader, serialNumberLimit)
@@ -39,8 +46,8 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization:       []string{configCert.Subject.O},
-			OrganizationalUnit: []string{configCert.Subject.OU},
+			Organization:       org,
+			OrganizationalUnit: orgUnit,
 			CommonName:         configCert.Subject.CN,
 		},
 		NotBefore:             notBefore,
@@ -98,7 +105,6 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 		Headers: nil,
 		Bytes:   derBytes,
 	}
-
 	return cert, pem.EncodeToMemory(&certBlk), nil
 }
 

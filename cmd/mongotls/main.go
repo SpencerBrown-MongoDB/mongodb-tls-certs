@@ -47,19 +47,18 @@ func createCerts() error {
 		allCreated = true
 		for certName, cert := range config.Config.Certificates {
 			if cert.Certificate == nil {
-				if cert.Type == config.RootCACert {
+				if cert.IsSelfSigned {
 					// self-signed, just create it
 					cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, cert, nil, nil)
 					if err != nil {
-						return fmt.Errorf("error creating certificate %s: %v", certName, err)
+						return fmt.Errorf("error creating self-signed certificate %s: %v", certName, err)
 					}
 				} else {
 					// not self-signed, check if issuer created yet
-					issuerCert := config.Config.Certificates[cert.Issuer]
-					if issuerCert.Certificate == nil {
+					if cert.IssuerCert.Certificate == nil {
 						allCreated = false // this one has to wait until its issuer is created
 					} else {
-						cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, cert, issuerCert.PrivateKey, issuerCert.Certificate)
+						cert.PrivateKey, cert.Certificate, err = createKeyCert(certName, cert, cert.IssuerCert.PrivateKey, cert.IssuerCert.Certificate)
 					}
 				}
 			}

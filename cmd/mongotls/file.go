@@ -73,7 +73,14 @@ func createPrivateKey(filename string, ext string) (crypto.PrivateKey, error) {
 }
 
 func createCert(certName string, configCert *config.Cert, key crypto.PrivateKey, CAKey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, error) {
-	cert, PEMcert, err := mx509.CreateCert(configCert, key, CAKey, CACert)
+	certInfo := mx509.CertInfo{
+		CertType: configCert.Type,
+		O:        configCert.Subject.O,
+		OU:       configCert.Subject.OU,
+		CN:       configCert.Subject.CN,
+		Hosts:    configCert.Hosts,
+	}
+	cert, PEMcert, err := mx509.CreateCert(&certInfo, key, CAKey, CACert)
 	if err != nil {
 		return nil, fmt.Errorf("error creating %s certificate: %v", certName, err)
 	}

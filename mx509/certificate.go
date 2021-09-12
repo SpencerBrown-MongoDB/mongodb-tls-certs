@@ -8,16 +8,33 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
-	"github.com/SpencerBrown/mongodb-tls-certs/config"
 	"math/big"
 	"net"
 	"time"
 )
 
+// Certificate types handled by this package
+const (
+	_ = iota // don't allow zero as a valid certificate type
+	RootCACert
+	IntermediateCACert
+	OCSPSigningCert
+	ServerCert
+	ClientCert
+)
+
+type CertInfo struct {
+	CertType int // certificate type
+	O        string
+	OU       string
+	CN       string
+	Hosts    []string
+}
+
 // CreateCert creates a certificate from a private key and a CA or self-signed
 // a flag controls what kind of certificate is generated
 // returns the certificate, and a byte slice PEM-formatted version
-func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
+func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
 	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
 	// KeyUsage bits set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
@@ -30,11 +47,11 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 	notBefore = time.Now()
 	notAfter := notBefore.AddDate(0, 0, 90) // good for 90 days
 	var org, orgUnit []string
-	if configCert.Subject.O != "" {
-		org = []string{configCert.Subject.O}
+	if certInfo.O != "" {
+		org = []string{certInfo.O}
 	}
-	if configCert.Subject.OU != "" {
-		orgUnit = []string{configCert.Subject.OU}
+	if certInfo.OU != "" {
+		orgUnit = []string{certInfo.OU}
 	}
 
 	serialNumberLimit := new(big.Int).Lsh(big.NewInt(1), 128)
@@ -48,7 +65,7 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 		Subject: pkix.Name{
 			Organization:       org,
 			OrganizationalUnit: orgUnit,
-			CommonName:         configCert.Subject.CN,
+			CommonName:         certInfo.CN,
 		},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
@@ -56,11 +73,11 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 	}
 
 	var derBytes []byte
-	switch configCert.Type {
-	case config.ServerCert: // Can authenticate as client or server, has SAN with DNS names
+	switch certInfo.CertType {
+	case ServerCert: // Can authenticate as client or server, has SAN with DNS names
 		var DNSNames = make([]string, 0)
 		var IPAddresses = make([]net.IP, 0)
-		for _, h := range configCert.Hosts {
+		for _, h := range certInfo.Hosts {
 			if ip := net.ParseIP(h); ip != nil {
 				IPAddresses = append(IPAddresses, ip)
 			} else {
@@ -72,25 +89,27 @@ func CreateCert(configCert *config.Cert, key crypto.PrivateKey, CAkey crypto.Pri
 		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case config.ClientCert: // Can authenticate as client
+	case ClientCert: // Can authenticate as client
 		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case config.RootCACert: // Can sign certificates, is a CA
+	case RootCACert: // Can sign certificates, is a CA
 		template.IsCA = true
 		keyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, &template, publicKey(key), key)
-	case config.IntermediateCACert: // Can sign certificates, is a CA
+	case IntermediateCACert: // Can sign certificates, is a CA
 		template.IsCA = true
 		keyUsage |= x509.KeyUsageCertSign
 		keyUsage |= x509.KeyUsageCRLSign
 		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case config.OCSPSigningCert: // Can sign OCSP responses
+	case OCSPSigningCert: // Can sign OCSP responses
 		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageOCSPSigning}
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	default:
+		return nil, nil, fmt.Errorf("error: invalid certificate type %d", certInfo.CertType)
 	}
 
 	if err != nil {

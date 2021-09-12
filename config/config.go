@@ -4,6 +4,7 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
+	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
 	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
@@ -17,37 +18,12 @@ const (
 	defaultExtensionCert    = "pem"
 )
 
-// Certificate types as enums
-const (
-	RootCACert = iota
-	IntermediateCACert
-	OCSPSigningCert
-	ServerCert
-	ClientCert
-)
-
 // information about a certificate
 type certInfo struct {
 	ctype        int  // certificate type
 	isCA         bool // is it a CA?
 	isSelfSigned bool // is it self-signed?
-}
-
-// getCertTYpe converts a type string to information about the kind of certificate it is
-func getCertType(typeString string) (*certInfo, error) {
-	theMap := map[string]certInfo{
-		"rootCA":         {RootCACert, true, true},
-		"intermediateCA": {IntermediateCACert, true, false},
-		"OCSPSigning":    {OCSPSigningCert, false, false},
-		"server":         {ServerCert, false, false},
-		"client":         {ClientCert, false, false},
-	}
-	certType, ok := theMap[typeString]
-	if ok {
-		return &certType, nil
-	} else {
-		return nil, fmt.Errorf("invalid certificate type '%s'", typeString)
-	}
+	isOCSPSigner bool // Is it an OCSP signer?
 }
 
 // SubjectType is the type for a subject name
@@ -55,6 +31,23 @@ type SubjectType struct {
 	O  string `yaml:"O"`
 	OU string `yaml:"OU"`
 	CN string `yaml:"CN"`
+}
+
+// getCertTYpe converts a type string to information about the kind of certificate it is
+func getCertType(typeString string) (*certInfo, error) {
+	theMap := map[string]certInfo{
+		"rootCA":         {mx509.RootCACert, true, true, false},
+		"intermediateCA": {mx509.IntermediateCACert, true, false, false},
+		"OCSPSigning":    {mx509.OCSPSigningCert, false, false, true},
+		"server":         {mx509.ServerCert, false, false, false},
+		"client":         {mx509.ClientCert, false, false, false},
+	}
+	certType, ok := theMap[typeString]
+	if ok {
+		return &certType, nil
+	} else {
+		return nil, fmt.Errorf("invalid certificate type '%s'", typeString)
+	}
 }
 
 // Cert type is an Internal representation of a certificate specification,
@@ -69,6 +62,7 @@ type Cert struct {
 	Type         int               `yaml:"-"`
 	IsCA         bool              `yaml:"-"`
 	IsSelfSigned bool              `yaml:"-"`
+	IsOCSPSigner bool              `yaml:"-"`
 	PrivateKey   crypto.PrivateKey `yaml:"-"`
 	Certificate  *x509.Certificate `yaml:"-"`
 	IssuerCert   *Cert             `yaml:"-"`
@@ -149,6 +143,7 @@ func GetConfig(configFilename *string) error {
 		cert.Type = certType.ctype
 		cert.IsCA = certType.isCA
 		cert.IsSelfSigned = certType.isSelfSigned
+		cert.IsOCSPSigner = certType.isOCSPSigner
 		if cert.Subject.O == "" {
 			cert.Subject.O = Config.Subject.O
 		}

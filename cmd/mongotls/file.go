@@ -31,7 +31,11 @@ func createCombo(comboName string, comboList []string) error {
 	comboPEM := make([]byte, 0)
 	isPrivate := false
 	for _, fnext := range comboList {
-		ext := (filepath.Ext(fnext))[1:]
+		ext := filepath.Ext(fnext)
+		if ext == "" {
+			return fmt.Errorf("error: filename '%s' has no extension", fnext)
+		}
+		ext = ext[1:]
 		if ext == config.Config.ExtensionKey {
 			isPrivate = true
 		}

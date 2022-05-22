@@ -7,11 +7,11 @@ mkdir release-binaries
 # Install locally
 
 go install ./cmd/mongotls
+echo -n $(mongotls --version) > latest
 
 # Linux on Intel
 GOOS=linux GOARCH=amd64 go build ./cmd/mongotls
 tar czf release-binaries/mongotls-linux.tar.gz mongotls
-echo -n $(./mongotls --version) > latest
 rm mongotls
 
 # Windows on Intel

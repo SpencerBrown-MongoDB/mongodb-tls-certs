@@ -1,16 +1,30 @@
-# bash script to make tarballs for linux, windows, and macos for releases
-# ASSUMES IT'S RUNNING ON lINUX
+# Create binaries for mongotls
+# Currently works only on Linux with the zip tool installed
 
-cd ~/go/src/github.com/SpencerBrown/mongodb-tls-certs/ || exit
+rm -r release-binaries
+mkdir release-binaries
+
+# Install locally
+
 go install ./cmd/mongotls
-GOOS=windows go install ./cmd/mongotls
-GOOS=darwin go install ./cmd/mongotls
 
-cd ~/go/bin || exit
-tar czf mongotls-linux.tgz mongotls
+# Linux on Intel
+GOOS=linux GOARCH=amd64 go build ./cmd/mongotls
+tar czf release-binaries/mongotls-linux.tar.gz mongotls
+echo -n $(./mongotls --version) > latest
+rm mongotls
 
-cd ~/go/bin/darwin_amd64/ || exit
-tar czf mongotls-macos.tgz mongotls
+# Windows on Intel
+GOOS=windows GOARCH=amd64 go build ./cmd/mongotls
+zip release-binaries/mongotls-windows.zip mongotls.exe
+rm mongotls.exe
 
-cd ~/go/bin/windows_amd64/ || exit
-7za u -tzip mongotls-windows.zip mongotls.exe
+# macOS on Intel
+GOOS=darwin GOARCH=amd64 go build ./cmd/mongotls
+tar czf release-binaries/mongotls-macos-intel.tar.gz mongotls
+rm mongotls
+
+# masOS on Apple Silicon
+GOOS=darwin GOARCH=arm64 go build ./cmd/mongotls
+tar czf release-binaries/mongotls-macos-apple.tar.gz mongotls
+rm mongotls

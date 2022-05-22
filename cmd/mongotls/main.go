@@ -3,16 +3,23 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/SpencerBrown/mongodb-tls-certs/config"
 	"log"
+
+	"github.com/SpencerBrown/mongodb-tls-certs/config"
 )
 
 func main() {
 
 	var (
+		versionp       = flag.Bool("version", false, "Print version and exit")
 		configFilename = flag.String("f", "mongodb-tls.yaml", "Config file path/name")
 	)
 	flag.Parse()
+
+	if *versionp {
+		fmt.Println(version())
+		return
+	}
 
 	err := config.GetConfig(configFilename)
 

@@ -1,2 +1,5 @@
 .idea/
+.vscode
 tls/
+release-binaries/
+latest

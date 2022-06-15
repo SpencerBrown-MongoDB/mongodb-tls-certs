@@ -4,12 +4,13 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
-	"github.com/SpencerBrown/mongodb-tls-certs/config"
-	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
 	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/SpencerBrown/mongodb-tls-certs/config"
+	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
 )
 
 // createKeyCert writes a private key and cert file
@@ -123,21 +124,25 @@ func getCertificate(prefix string, extension string) (*x509.Certificate, error) 
 
 // writeFile writes file <prefix>.<extension> with content, and marks it world-readable or user-readable
 func writeFile(prefix string, extension string, content []byte, private bool) error {
-	err := os.MkdirAll(config.Config.PublicDirectory, 0755)
+	prefixDir := filepath.Dir(prefix)
+	prefixBase := filepath.Base(prefix)
+	publicDir := filepath.Join(config.Config.PublicDirectory, prefixDir)
+	privateDir := filepath.Join(config.Config.PrivateDirectory, prefixDir)
+	err := os.MkdirAll(publicDir, 0755)
 	if err != nil {
-		return fmt.Errorf("error creating public directory %s: %v", config.Config.PublicDirectory, err)
+		return fmt.Errorf("error creating public directory %s: %v", publicDir, err)
 	}
-	err = os.MkdirAll(config.Config.PrivateDirectory, 0755)
+	err = os.MkdirAll(privateDir, 0755)
 	if err != nil {
-		return fmt.Errorf("error creating private directory %s: %v", config.Config.PrivateDirectory, err)
+		return fmt.Errorf("error creating private directory %s: %v", privateDir, err)
 	}
-	fn := prefix + "." + extension
+	fn := prefixBase + "." + extension
 	var perms fs.FileMode
 	if private {
-		fn = filepath.Join(config.Config.PrivateDirectory, fn)
+		fn = filepath.Join(privateDir, fn)
 		perms = os.FileMode(0600)
 	} else {
-		fn = filepath.Join(config.Config.PublicDirectory, fn)
+		fn = filepath.Join(publicDir, fn)
 		perms = os.FileMode(0644)
 	}
 	err = os.WriteFile(fn, content, perms)
@@ -150,17 +155,20 @@ func writeFile(prefix string, extension string, content []byte, private bool) er
 
 // readFile reads <prefix>.<extension> and returns slice of bytes
 func readFile(prefix string, extension string) ([]byte, error) {
+	prefixDir := filepath.Dir(prefix)
+	prefixBase := filepath.Base(prefix)
+	publicDir := filepath.Join(config.Config.PublicDirectory, prefixDir)
+	privateDir := filepath.Join(config.Config.PrivateDirectory, prefixDir)
 	var readDir string
 	switch extension {
 	case config.Config.ExtensionCert:
-		readDir = config.Config.PublicDirectory
+		readDir = publicDir
 	case config.Config.ExtensionKey:
-		readDir = config.Config.PrivateDirectory
+		readDir = privateDir
 	default:
 		return nil, fmt.Errorf("file extension not recognized: %s", extension)
 	}
-	fn := prefix + "." + extension
-	fn = filepath.Join(readDir, fn)
+	fn := filepath.Join(readDir, prefixBase+"."+extension)
 	content, err := os.ReadFile(fn)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file %s: %v", fn, err)

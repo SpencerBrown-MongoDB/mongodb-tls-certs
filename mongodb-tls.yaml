@@ -1,4 +1,5 @@
-# Directories where files will be written.
+# Directories where files will be written by default. 
+# However, you can prefix a filename with a directory path, and that will be used instead. 
 directories:
   # files with only certificates are placed here
   public: tls
@@ -24,7 +25,7 @@ keyfiles:
 
 # Create SSH keypairs; these are like filename (private key) and filename.pub (public key)
 sshkeys:
-  clients/spencer.brown:
+  tls/clients/spencer.brown:
 
 # Create certificates and keys
 certificates:

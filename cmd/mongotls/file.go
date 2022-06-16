@@ -191,13 +191,20 @@ func readFile(prefix string, extension string) ([]byte, error) {
 func getFilePaths(prefix string, extension string) (publicDir string, privateDir string, thisDir string, isPrivate bool, fileName string, exists bool) {
 	prefixDir := filepath.Dir(prefix)
 	prefixBase := filepath.Base(prefix)
-	publicDir = filepath.Join(config.Config.PublicDirectory, prefixDir)
-	privateDir = filepath.Join(config.Config.PrivateDirectory, prefixDir)
-	isPrivate = false
-	thisDir = publicDir
-	if extension == config.Config.ExtensionKey {
-		isPrivate = true
-		thisDir = privateDir
+	if len(prefixDir) > 1 {
+		publicDir = prefixDir
+		privateDir = prefixDir
+		thisDir = prefixDir
+		isPrivate = false
+	} else {
+		publicDir = filepath.Join(config.Config.PublicDirectory, prefixDir)
+		privateDir = filepath.Join(config.Config.PrivateDirectory, prefixDir)
+		isPrivate = false
+		thisDir = publicDir
+		if extension == config.Config.ExtensionKey {
+			isPrivate = true
+			thisDir = privateDir
+		}
 	}
 	if extension == "" {
 		fileName = prefixBase

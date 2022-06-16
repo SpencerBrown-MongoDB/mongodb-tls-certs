@@ -21,7 +21,12 @@ Characteristics of these files are specified in a YAML file.
 
 ## Running `mongotls`
 
-The only option (other than `--help`) for the *mongotls* command is `-f <config-file>` to point to the YAML configuration file to be used. The default filename is `mongodb-tls.yaml`. 
+Command options:
+
+* `-f <config-file>`: specify the YAML configuration file to be used. The default filename is `mongodb-tls.yaml`. 
+* `-erase`: All files in the specified directories are removed before generating new files, Default behavior is to not erase files. 
+* `-version`: print version and exit.
+* `-help`: print a summary of the available options.
 
 ## Example YAML configuration file
 

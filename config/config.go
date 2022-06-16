@@ -19,7 +19,7 @@ const (
 	defaultExtensionCert    = "pem"
 )
 
-// information about a certificate
+// certInfo is information about a certificate
 type certInfo struct {
 	ctype        int  // certificate type
 	isCA         bool // is it a CA?
@@ -34,7 +34,7 @@ type SubjectType struct {
 	CN string `yaml:"CN"`
 }
 
-// getCertTYpe converts a type string to information about the kind of certificate it is
+// getCertType converts a type string to information about the kind of certificate it is
 func getCertType(typeString string) (*certInfo, error) {
 	theMap := map[string]certInfo{
 		"rootCA":         {mx509.RootCACert, true, true, false},
@@ -93,6 +93,14 @@ type ConfigT struct {
 
 // Config is a global variable for "THE CONFIG", there will only be one per run
 var Config ConfigT
+
+// OptionsT type represents the options for this run
+type OptionsT struct {
+	ReplaceFiles bool
+}
+
+// Options is the global variable for the specified options for this run
+var Options OptionsT
 
 // GetConfig is responsible for parsing the YAML file and filling in the global variable Config
 func GetConfig(configFilename *string) error {

@@ -13,6 +13,7 @@ func main() {
 	var (
 		versionp       = flag.Bool("version", false, "Print version and exit")
 		configFilename = flag.String("f", "mongodb-tls.yaml", "Config file path/name")
+		replaceFilesP = flag.Bool("erase", false, "Erase all files from directories before generating new ones")
 	)
 	flag.Parse()
 
@@ -21,10 +22,20 @@ func main() {
 		return
 	}
 
+	config.Options.ReplaceFiles = *replaceFilesP
+
 	err := config.GetConfig(configFilename)
 
 	if err != nil {
 		log.Fatalf("Error getting config file '%s': %v", *configFilename, err)
+	}
+
+	if *replaceFilesP {
+		log.Printf("Erasing all files in public directory '%s' and private directory '%s'", config.Config.PublicDirectory, config.Config.PrivateDirectory)
+		err = removeFiles()
+		if err != nil {
+			log.Fatalf("Error erasing files: %v", err)
+		}
 	}
 
 	err = createCerts()
@@ -103,7 +114,7 @@ func createKeyFiles() error {
 }
 
 func createSSHKeys() error {
-	for sshKeyName, _ := range config.Config.SSHKeys {
+	for sshKeyName := range config.Config.SSHKeys {
 		err := createSSHKey(sshKeyName)
 		if err != nil {
 			log.Fatalf("Error creating SSH key '%s': %v", sshKeyName, err)

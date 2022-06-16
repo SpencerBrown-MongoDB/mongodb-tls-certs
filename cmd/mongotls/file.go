@@ -30,7 +30,7 @@ func createKeyCert(certName string, configCert *config.Cert, CAkey crypto.Privat
 	return privateKey, cert, nil
 }
 
-// createCombo creates a combo file by concatening a list of PEM files and writing it as a single file
+// createCombo creates a combo file by concatenating a list of PEM files and writing it as a single file
 func createCombo(comboName string, comboList []string) error {
 	comboPEM := make([]byte, 0)
 	isPrivate := false
@@ -77,7 +77,6 @@ func createSSHKey(filename string) error {
 	if err != nil {
 		return fmt.Errorf("error writing private SSH key file '%s': %v", filename, err)
 	}
-
 	publicSSHKey, err := ssh.NewPublicKey(&(key.(*rsa.PrivateKey)).PublicKey)
 	if err != nil {
 		return fmt.Errorf("error creating public SSH key: %v", err)
@@ -206,4 +205,24 @@ func readFile(prefix string, extension string) ([]byte, error) {
 		return nil, fmt.Errorf("error reading file %s: %v", fn, err)
 	}
 	return content, nil
+}
+
+// removeFiles erases all files in the public and private directories
+func removeFiles() error {
+	var err error
+	_, err = os.Stat(config.Config.PrivateDirectory)
+	if !os.IsNotExist(err) {
+		err = os.RemoveAll(config.Config.PrivateDirectory)
+		if err != nil {
+			return fmt.Errorf("error removing private directory '%s': %v", config.Config.PrivateDirectory, err)
+		}
+	}
+	_, err = os.Stat(config.Config.PublicDirectory)
+	if !os.IsNotExist(err) {
+		err = os.RemoveAll(config.Config.PublicDirectory)
+		if err != nil {
+			return fmt.Errorf("error removing public directory '%s': %v", config.Config.PublicDirectory, err)
+		}
+	}
+	return nil
 }

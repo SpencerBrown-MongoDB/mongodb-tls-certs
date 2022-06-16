@@ -35,12 +35,9 @@ type CertInfo struct {
 // a flag controls what kind of certificate is generated
 // returns the certificate, and a byte slice PEM-formatted version
 func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
-	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature
-	// KeyUsage bits set in the x509.Certificate template
+	// ECDSA, ED25519 and RSA subject keys should have the DigitalSignature KeyUsage bits set in the x509.Certificate template
 	keyUsage := x509.KeyUsageDigitalSignature
-	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In
-	// the context of TLS this KeyUsage is particular to RSA key exchange and
-	// authentication.
+	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In the context of TLS this KeyUsage is particular to RSA key exchange and authentication.
 	keyUsage |= x509.KeyUsageKeyEncipherment
 
 	var notBefore time.Time

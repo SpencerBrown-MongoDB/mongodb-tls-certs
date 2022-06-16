@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto"
+	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"io/fs"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/SpencerBrown/mongodb-tls-certs/config"
 	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
+	"golang.org/x/crypto/ssh"
 )
 
 // createKeyCert writes a private key and cert file
@@ -28,6 +30,7 @@ func createKeyCert(certName string, configCert *config.Cert, CAkey crypto.Privat
 	return privateKey, cert, nil
 }
 
+// createCombo creates a combo file by concatening a list of PEM files and writing it as a single file
 func createCombo(comboName string, comboList []string) error {
 	comboPEM := make([]byte, 0)
 	isPrivate := false
@@ -54,12 +57,35 @@ func createCombo(comboName string, comboList []string) error {
 	return nil
 }
 
-// createKeyFile writes a keyfile
+// createKeyFile creates and writes a keyfile
 func createKeyFile(filename string) error {
 	key := mx509.CreateKeyFile()
 	err := writeFile(filename, config.Config.ExtensionKey, key, true)
 	if err != nil {
 		return fmt.Errorf("error writing keyfile '%s': %v", filename, err)
+	}
+	return nil
+}
+
+// createSSHKey creates an SSH keypair and writes it to the file "filename" and "filename.pub"
+func createSSHKey(filename string) error {
+	key, PEMkey, err := mx509.CreatePrivateKey()
+	if err != nil {
+		return fmt.Errorf("error creating private SSH key: %v", err)
+	}
+	err = writeFile(filename, "", PEMkey, true)
+	if err != nil {
+		return fmt.Errorf("error writing private SSH key file '%s': %v", filename, err)
+	}
+
+	publicSSHKey, err := ssh.NewPublicKey(&(key.(*rsa.PrivateKey)).PublicKey)
+	if err != nil {
+		return fmt.Errorf("error creating public SSH key: %v", err)
+	}
+	publicSSHKeyBytes := ssh.MarshalAuthorizedKey(publicSSHKey)
+	err = writeFile(filename, "pub", publicSSHKeyBytes, false)
+	if err != nil {
+		return fmt.Errorf("error writing public SSH key file '%s': %v", filename, err)
 	}
 	return nil
 }
@@ -77,6 +103,7 @@ func createPrivateKey(filename string, ext string) (crypto.PrivateKey, error) {
 	return key, nil
 }
 
+// createCert creates a signed certificate and writes it to the file
 func createCert(certName string, configCert *config.Cert, key crypto.PrivateKey, CAKey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, error) {
 	certInfo := mx509.CertInfo{
 		CertType: configCert.Type,

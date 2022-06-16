@@ -4,10 +4,11 @@ import (
 	"crypto"
 	"crypto/x509"
 	"fmt"
-	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
-	"gopkg.in/yaml.v3"
 	"os"
 	"path/filepath"
+
+	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
+	"gopkg.in/yaml.v3"
 )
 
 // defaults for directories and extensions
@@ -68,15 +69,20 @@ type Cert struct {
 	IssuerCert   *Cert             `yaml:"-"`
 }
 
-// Type type is the internal representation of the entire config file,
+// SSHKeys type represents a request for SSH keys. No options (yet).
+type SSHKeys struct {
+}
+
+// ConfigT type is the internal representation of the entire config file,
 // some filled in from the YAML config files, some calculated
-type Type struct {
+type ConfigT struct {
 	// filled in by YAML unmarshalling
 	Directories  map[string]string `yaml:"directories"`
 	Extensions   map[string]string `yaml:"extensions"`
 	Subject      SubjectType
 	KeyFiles     []string            `yaml:"keyfiles"`
 	Certificates map[string]*Cert    `yaml:"certificates"`
+	SSHKeys      map[string]*SSHKeys `yaml:"sshkeys"`
 	Combos       map[string][]string `yaml:"combos"`
 	// filled in programmatically
 	PublicDirectory  string `yaml:"-"`
@@ -86,7 +92,7 @@ type Type struct {
 }
 
 // Config is a global variable for "THE CONFIG", there will only be one per run
-var Config Type
+var Config ConfigT
 
 // GetConfig is responsible for parsing the YAML file and filling in the global variable Config
 func GetConfig(configFilename *string) error {

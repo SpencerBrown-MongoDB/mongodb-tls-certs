@@ -32,6 +32,11 @@ func main() {
 		log.Fatalf("Error creating certificates: %v", err)
 	}
 
+	err = createSSHKeys()
+	if err != nil {
+		log.Fatalf("Error creating SSH keys: %v", err)
+	}
+
 	err = createCombos()
 	if err != nil {
 		log.Fatalf("Error creating combination files: %v", err)
@@ -78,9 +83,6 @@ func createCerts() error {
 }
 
 func createCombos() error {
-	if config.Config.Combos == nil {
-		return nil // nothing to do
-	}
 	for comboName, comboList := range config.Config.Combos {
 		err := createCombo(comboName, comboList)
 		if err != nil {
@@ -95,6 +97,16 @@ func createKeyFiles() error {
 		err := createKeyFile(fn)
 		if err != nil {
 			log.Fatalf("Error creating keyfile '%s': %v", fn, err)
+		}
+	}
+	return nil
+}
+
+func createSSHKeys() error {
+	for sshKeyName, _ := range config.Config.SSHKeys {
+		err := createSSHKey(sshKeyName)
+		if err != nil {
+			log.Fatalf("Error creating SSH key '%s': %v", sshKeyName, err)
 		}
 	}
 	return nil

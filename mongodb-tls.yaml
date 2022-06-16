@@ -22,6 +22,10 @@ subject:
 keyfiles:
   - keyfile
 
+# Create SSH keypairs; these are like filename (private key) and filename.pub (public key)
+sshkeys:
+  clients/spencer.brown:
+
 # Create certificates and keys
 certificates:
   root-ca:

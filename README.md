@@ -15,6 +15,7 @@ Specifically, the command supports generating:
 * Signing certificates for OCSP responders
 * Combination files, such as for CA certificate chains or for MongoDB certificateKeyFile files that include both the private key and certificate for a MongoDB server
 * Keyfiles for MongoDB replica sets or for MongoDB local encryption-at-rest keys
+* SSH key pairs for SSH access
 
 Characteristics of these files are specified in a YAML file. 
 
@@ -87,6 +88,14 @@ The YAML keys underneath the name of the certificate/key are the following:
 * `subject:` -- beginning of a section for the subject name. Can contain sub-keys O:, OU: and/or CN:. 
 * `issuer:` -- name of the CA to sign this certificate.
 * `hosts:` -- list of hostnames and/or IP addresses for the SAN field of a server certificate.
+
+### keyfiles
+
+The keyfiles section specifies names of keyfiles to be generated.
+
+### sshkeys
+
+The sshkeys section specifies names; each name generates an SSH private/public key pair in files, where the public key has a ".pub" extension. 
 
 ### combos
 

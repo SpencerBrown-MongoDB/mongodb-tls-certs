@@ -163,7 +163,12 @@ func writeFile(prefix string, extension string, content []byte, private bool) er
 	if err != nil {
 		return fmt.Errorf("error creating private directory %s: %v", privateDir, err)
 	}
-	fn := prefixBase + "." + extension
+	var fn string
+	if extension == "" {
+		fn = prefixBase
+	} else {
+		fn = prefixBase + "." + extension
+	}
 	var perms fs.FileMode
 	if private {
 		fn = filepath.Join(privateDir, fn)

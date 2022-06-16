@@ -150,10 +150,11 @@ func getCertificate(prefix string, extension string) (*x509.Certificate, error) 
 
 // writeFile writes file <prefix>.<extension> with content, and marks it world-readable or user-readable
 func writeFile(prefix string, extension string, content []byte, private bool) error {
-	prefixDir := filepath.Dir(prefix)
-	prefixBase := filepath.Base(prefix)
-	publicDir := filepath.Join(config.Config.PublicDirectory, prefixDir)
-	privateDir := filepath.Join(config.Config.PrivateDirectory, prefixDir)
+	publicDir, privateDir, _, _, fileName, fileExists := getFilePaths(prefix, extension)
+	if fileExists {
+		log.Printf("File '%s' already exists", fileName)
+		return nil
+	}
 	err := os.MkdirAll(publicDir, 0755)
 	if err != nil {
 		return fmt.Errorf("error creating public directory %s: %v", publicDir, err)
@@ -162,49 +163,58 @@ func writeFile(prefix string, extension string, content []byte, private bool) er
 	if err != nil {
 		return fmt.Errorf("error creating private directory %s: %v", privateDir, err)
 	}
-	var fn string
-	if extension == "" {
-		fn = prefixBase
-	} else {
-		fn = prefixBase + "." + extension
-	}
 	var perms fs.FileMode
 	if private {
-		fn = filepath.Join(privateDir, fn)
 		perms = os.FileMode(0600)
 	} else {
-		fn = filepath.Join(publicDir, fn)
 		perms = os.FileMode(0644)
 	}
-	err = os.WriteFile(fn, content, perms)
+	err = os.WriteFile(fileName, content, perms)
 	if err != nil {
-		return fmt.Errorf("error writing file %s: %v", fn, err)
+		return fmt.Errorf("error writing file %s: %v", fileName, err)
 	}
-	log.Printf("'%s' file created", fn)
+	log.Printf("'%s' file created", fileName)
 	return nil
 }
 
 // readFile reads <prefix>.<extension> and returns slice of bytes
 func readFile(prefix string, extension string) ([]byte, error) {
-	prefixDir := filepath.Dir(prefix)
-	prefixBase := filepath.Base(prefix)
-	publicDir := filepath.Join(config.Config.PublicDirectory, prefixDir)
-	privateDir := filepath.Join(config.Config.PrivateDirectory, prefixDir)
-	var readDir string
-	switch extension {
-	case config.Config.ExtensionCert:
-		readDir = publicDir
-	case config.Config.ExtensionKey:
-		readDir = privateDir
-	default:
-		return nil, fmt.Errorf("file extension not recognized: %s", extension)
-	}
-	fn := filepath.Join(readDir, prefixBase+"."+extension)
-	content, err := os.ReadFile(fn)
+	_, _, _, _, fileName, _ := getFilePaths(prefix, extension)
+	content, err := os.ReadFile(fileName)
 	if err != nil {
-		return nil, fmt.Errorf("error reading file %s: %v", fn, err)
+		return nil, fmt.Errorf("error reading file %s: %v", fileName, err)
 	}
 	return content, nil
+}
+
+// getFilePaths figures out and returns what directories and filename to actually use
+func getFilePaths(prefix string, extension string) (publicDir string, privateDir string, thisDir string, isPrivate bool, fileName string, exists bool) {
+	prefixDir := filepath.Dir(prefix)
+	prefixBase := filepath.Base(prefix)
+	publicDir = filepath.Join(config.Config.PublicDirectory, prefixDir)
+	privateDir = filepath.Join(config.Config.PrivateDirectory, prefixDir)
+	isPrivate = false
+	thisDir = publicDir
+	if extension == config.Config.ExtensionKey {
+		isPrivate = true
+		thisDir = privateDir
+	}
+	if extension == "" {
+		fileName = prefixBase
+	} else {
+		fileName = prefixBase + "." + extension
+	}
+	fileName = filepath.Join(thisDir, fileName)
+	_, err := os.Stat(fileName)
+	switch err {
+	case os.ErrNotExist:
+		exists = false
+	case nil:
+		exists = true
+	default:
+		exists = false
+	}
+	return
 }
 
 // removeFiles erases all files in the public and private directories

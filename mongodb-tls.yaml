@@ -10,8 +10,14 @@ directories:
 extensions:
   # extension added to files with only keys
   key: key
-  # extension used for files with certificates (perhaps also with keys)
+  # extension used for files with certificates (perhaps also with keys, as in combo files)
   certificate: pem
+  # extension used for SSH private key files
+  sshkey: ""
+  # extension used for SSH public key files
+  sshpub: "pub"
+  # extension used for SSH certificxate files
+  sshcert: "cer"
 
 # Defaults for subject name components.
 # Any certificate that does not specify some of these components receives this default value.

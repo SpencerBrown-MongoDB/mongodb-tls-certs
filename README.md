@@ -2,9 +2,9 @@
 
 ## Overview
 
-THe `mongotls` command allows you to generate TLS certificates, keys, keyfiles, and combination files for MongoDB test purposes. 
+THe `mongotls` command allows you to generate TLS certificates, keys, keyfiles, SSH keys, and combination files for MongoDB test purposes. 
 
-**PLEASE NOTE** These certificates are not intended for production use or for any deployment that requires security controls. 
+**PLEASE NOTE** These certificates and keys are not intended for production use or for any deployment that requires security controls. 
 
 Specifically, the command supports generating:
 
@@ -58,7 +58,9 @@ directories:
 The extensions section has two possible YAML keys underneath it:
 
 * `key: <ext>` (default `key`) -- the filename extension used when creating files containing only keys
-* `certificate: <ext>` (default `pem`)
+* `certificate: <ext>` (default `pem`) -- the extension used when creating certificate files or combo files
+* `sshkey: <ext>` (default blank) -- the extension used when creating private SSH key files
+* `sshpub: <ext>` (dfault `pub`) -- the extension used when creating public SSH key files
 
 Example:
 

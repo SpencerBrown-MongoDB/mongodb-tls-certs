@@ -17,6 +17,9 @@ const (
 	defaultPrivateDirectory = "tls/private"
 	defaultExtensionKey     = "key"
 	defaultExtensionCert    = "pem"
+	defaultExtensionSSHKey  = ""
+	defaultExtensionSSHPub  = "pub"
+	defaultExtensionSSHCert = "cer"
 )
 
 // certInfo is information about a certificate
@@ -89,6 +92,9 @@ type ConfigT struct {
 	PrivateDirectory string `yaml:"-"`
 	ExtensionKey     string `yaml:"-"`
 	ExtensionCert    string `yaml:"-"`
+	ExtensionSSHKey  string `yaml:"-"`
+	ExtensionSSHPub  string `yaml:"-"`
+	ExtensionSSHCert string `yaml:"-"`
 }
 
 // Config is a global variable for "THE CONFIG", there will only be one per run
@@ -130,6 +136,9 @@ func GetConfig(configFilename *string) error {
 
 	Config.ExtensionKey = defaultExtensionKey
 	Config.ExtensionCert = defaultExtensionCert
+	Config.ExtensionSSHKey = defaultExtensionSSHKey
+	Config.ExtensionSSHPub = defaultExtensionSSHPub
+	Config.ExtensionSSHCert = defaultExtensionSSHCert
 	if Config.Extensions != nil {
 		for extName, ext := range Config.Extensions {
 			switch extName {
@@ -137,6 +146,12 @@ func GetConfig(configFilename *string) error {
 				Config.ExtensionKey = ext
 			case "certificate":
 				Config.ExtensionCert = ext
+			case "sshkey":
+				Config.ExtensionSSHKey = ext
+			case "sshpub":
+				Config.ExtensionSSHPub = ext
+			case "sshcert":
+				Config.ExtensionSSHCert = ext
 			default:
 				return fmt.Errorf("invalid entry %s in extensions section of config file %s", extName, ext)
 			}

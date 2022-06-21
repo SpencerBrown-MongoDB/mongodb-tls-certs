@@ -33,8 +33,9 @@ func createKeyCert(certName string, configCert *config.Cert, CAkey crypto.Privat
 // createCombo creates a combo file by concatenating a list of PEM files and writing it as a single file
 func createCombo(comboName string, comboList []string) error {
 	comboPEM := make([]byte, 0)
-	isPrivate := false
+	isAnyPrivate := false
 	for _, fnext := range comboList {
+		isPrivate := false
 		ext := filepath.Ext(fnext)
 		if ext == "" {
 			return fmt.Errorf("error: filename '%s' has no extension", fnext)
@@ -42,15 +43,16 @@ func createCombo(comboName string, comboList []string) error {
 		ext = ext[1:]
 		if ext == config.Config.ExtensionKey {
 			isPrivate = true
+			isAnyPrivate = true
 		}
 		name := fnext[:len(fnext)-len(ext)-1]
-		thisPEM, err := readFile(name, ext)
+		thisPEM, err := readFile(name, ext, isPrivate)
 		if err != nil {
 			return fmt.Errorf("error reading file '%s': %v", fnext, err)
 		}
 		comboPEM = append(comboPEM, thisPEM...)
 	}
-	err := writeFile(comboName, config.Config.ExtensionCert, comboPEM, isPrivate)
+	err := writeFile(comboName, config.Config.ExtensionCert, comboPEM, isAnyPrivate)
 	if err != nil {
 		return fmt.Errorf("error writing combo file '%s': %v", comboName, err)
 	}
@@ -73,7 +75,7 @@ func createSSHKey(filename string) error {
 	if err != nil {
 		return fmt.Errorf("error creating private SSH key: %v", err)
 	}
-	err = writeFile(filename, "", PEMkey, true)
+	err = writeFile(filename, config.Config.ExtensionSSHKey, PEMkey, true)
 	if err != nil {
 		return fmt.Errorf("error writing private SSH key file '%s': %v", filename, err)
 	}
@@ -82,7 +84,7 @@ func createSSHKey(filename string) error {
 		return fmt.Errorf("error creating public SSH key: %v", err)
 	}
 	publicSSHKeyBytes := ssh.MarshalAuthorizedKey(publicSSHKey)
-	err = writeFile(filename, "pub", publicSSHKeyBytes, false)
+	err = writeFile(filename, config.Config.ExtensionSSHPub, publicSSHKeyBytes, false)
 	if err != nil {
 		return fmt.Errorf("error writing public SSH key file '%s': %v", filename, err)
 	}
@@ -124,7 +126,7 @@ func createCert(certName string, configCert *config.Cert, key crypto.PrivateKey,
 
 // getPrivateKey reads a private key from the file <prefix>.<extension>
 func getPrivateKey(prefix string, extension string) (crypto.PrivateKey, error) {
-	content, err := readFile(prefix, extension)
+	content, err := readFile(prefix, extension, true)
 	if err != nil {
 		return nil, fmt.Errorf("error reading private key file: %v", err)
 	}
@@ -137,7 +139,7 @@ func getPrivateKey(prefix string, extension string) (crypto.PrivateKey, error) {
 
 // getCertificate reads a certificate from the file <prefix>.<extension>
 func getCertificate(prefix string, extension string) (*x509.Certificate, error) {
-	content, err := readFile(prefix, extension)
+	content, err := readFile(prefix, extension, false)
 	if err != nil {
 		return nil, fmt.Errorf("error reading certificate file: %v", err)
 	}
@@ -150,18 +152,10 @@ func getCertificate(prefix string, extension string) (*x509.Certificate, error) 
 
 // writeFile writes file <prefix>.<extension> with content, and marks it world-readable or user-readable
 func writeFile(prefix string, extension string, content []byte, private bool) error {
-	publicDir, privateDir, _, _, fileName, fileExists := getFilePaths(prefix, extension)
+	fileName, fileExists := getFilePaths(prefix, extension, private)
 	if fileExists {
 		log.Printf("File '%s' already exists", fileName)
 		return nil
-	}
-	err := os.MkdirAll(publicDir, 0755)
-	if err != nil {
-		return fmt.Errorf("error creating public directory %s: %v", publicDir, err)
-	}
-	err = os.MkdirAll(privateDir, 0755)
-	if err != nil {
-		return fmt.Errorf("error creating private directory %s: %v", privateDir, err)
 	}
 	var perms fs.FileMode
 	if private {
@@ -169,7 +163,7 @@ func writeFile(prefix string, extension string, content []byte, private bool) er
 	} else {
 		perms = os.FileMode(0644)
 	}
-	err = os.WriteFile(fileName, content, perms)
+	err := os.WriteFile(fileName, content, perms)
 	if err != nil {
 		return fmt.Errorf("error writing file %s: %v", fileName, err)
 	}
@@ -178,8 +172,11 @@ func writeFile(prefix string, extension string, content []byte, private bool) er
 }
 
 // readFile reads <prefix>.<extension> and returns slice of bytes
-func readFile(prefix string, extension string) ([]byte, error) {
-	_, _, _, _, fileName, _ := getFilePaths(prefix, extension)
+func readFile(prefix string, extension string, private bool) ([]byte, error) {
+	fileName, exists := getFilePaths(prefix, extension, private)
+	if !exists {
+		return nil, fmt.Errorf("file '%s' does not exist", fileName)
+	}
 	content, err := os.ReadFile(fileName)
 	if err != nil {
 		return nil, fmt.Errorf("error reading file %s: %v", fileName, err)
@@ -188,29 +185,26 @@ func readFile(prefix string, extension string) ([]byte, error) {
 }
 
 // getFilePaths figures out and returns what directories and filename to actually use
-func getFilePaths(prefix string, extension string) (publicDir string, privateDir string, thisDir string, isPrivate bool, fileName string, exists bool) {
+// if the prefix has a directory path, use it
+// if the extension is the keyfile extension (default "key") OR the private bit is true, use the private directory
+// otherwise, use the public directory
+func getFilePaths(prefix string, extension string, private bool) (fileName string, exists bool) {
 	prefixDir := filepath.Dir(prefix)
 	prefixBase := filepath.Base(prefix)
+	var thisDir string
 	if len(prefixDir) > 1 {
-		publicDir = prefixDir
-		privateDir = prefixDir
 		thisDir = prefixDir
-		isPrivate = false
+	} else if private {
+		thisDir = config.Config.PrivateDirectory
 	} else {
-		publicDir = filepath.Join(config.Config.PublicDirectory, prefixDir)
-		privateDir = filepath.Join(config.Config.PrivateDirectory, prefixDir)
-		isPrivate = false
-		thisDir = publicDir
-		if extension == config.Config.ExtensionKey {
-			isPrivate = true
-			thisDir = privateDir
-		}
+		thisDir = config.Config.PublicDirectory
 	}
 	if extension == "" {
 		fileName = prefixBase
 	} else {
 		fileName = prefixBase + "." + extension
 	}
+	os.MkdirAll(thisDir, 0755)
 	fileName = filepath.Join(thisDir, fileName)
 	_, err := os.Stat(fileName)
 	switch err {

@@ -7,7 +7,7 @@ mkdir release-binaries
 # Install locally
 
 go install ./cmd/mongotls
-echo -n $(mongotls --version) > latest
+printf $(mongotls --version) > latest
 
 # Linux on Intel
 GOOS=linux GOARCH=amd64 go build ./cmd/mongotls

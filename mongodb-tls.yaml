@@ -37,12 +37,14 @@ sshkeys:
 certificates:
   root-ca:
     type: rootCA
+    valid: 7300
     subject:
       O: MongoDB
       OU: Root-CA
       CN: Repro
   signing-ca:
     type: intermediateCA
+    valid: 365
     issuer: root-ca
     subject:
       OU: Signing-CA

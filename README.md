@@ -94,6 +94,7 @@ certificates:
 The YAML keys underneath the name of the certificate/key are the following:
 
 * `type:` -- can be rootCA, intermediateCA, server, client, or OCSPSigning.
+* `valid:` -- number of days before certificate expires. Default is 90. 
 * `subject:` -- beginning of a section for the subject name. Can contain sub-keys O:, OU: and/or CN:. 
 * `issuer:` -- name of the CA to sign this certificate.
 * `hosts:` -- list of hostnames and/or IP addresses for the SAN field of a server certificate.

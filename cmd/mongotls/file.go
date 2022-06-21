@@ -107,11 +107,12 @@ func createPrivateKey(filename string, ext string) (crypto.PrivateKey, error) {
 // createCert creates a signed certificate and writes it to the file
 func createCert(certName string, configCert *config.Cert, key crypto.PrivateKey, CAKey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, error) {
 	certInfo := mx509.CertInfo{
-		CertType: configCert.Type,
-		O:        configCert.Subject.O,
-		OU:       configCert.Subject.OU,
-		CN:       configCert.Subject.CN,
-		Hosts:    configCert.Hosts,
+		CertType:  configCert.Type,
+		ValidDays: configCert.ValidDays,
+		O:         configCert.Subject.O,
+		OU:        configCert.Subject.OU,
+		CN:        configCert.Subject.CN,
+		Hosts:     configCert.Hosts,
 	}
 	cert, PEMcert, err := mx509.CreateCert(&certInfo, key, CAKey, CACert)
 	if err != nil {

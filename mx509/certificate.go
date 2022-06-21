@@ -25,6 +25,7 @@ const (
 
 type CertInfo struct {
 	CertType int // certificate type
+	ValidDays int // how many days it should remain valid
 	O        string
 	OU       string
 	CN       string
@@ -42,7 +43,7 @@ func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateK
 
 	var notBefore time.Time
 	notBefore = time.Now()
-	notAfter := notBefore.AddDate(0, 0, 90) // good for 90 days
+	notAfter := notBefore.AddDate(0, 0, certInfo.ValidDays) // good for this many days
 	var org, orgUnit []string
 	if certInfo.O != "" {
 		org = []string{certInfo.O}

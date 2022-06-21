@@ -22,9 +22,13 @@ const (
 	defaultExtensionSSHCert = "cer"
 )
 
+// default for number of days certificate is valid
+const defaultValidDays = 90
+
 // certInfo is information about a certificate
 type certInfo struct {
 	ctype        int  // certificate type
+	validDays    int  // How many days to ve valid?
 	isCA         bool // is it a CA?
 	isSelfSigned bool // is it self-signed?
 	isOCSPSigner bool // Is it an OCSP signer?
@@ -40,11 +44,11 @@ type SubjectType struct {
 // getCertType converts a type string to information about the kind of certificate it is
 func getCertType(typeString string) (*certInfo, error) {
 	theMap := map[string]certInfo{
-		"rootCA":         {mx509.RootCACert, true, true, false},
-		"intermediateCA": {mx509.IntermediateCACert, true, false, false},
-		"OCSPSigning":    {mx509.OCSPSigningCert, false, false, true},
-		"server":         {mx509.ServerCert, false, false, false},
-		"client":         {mx509.ClientCert, false, false, false},
+		"rootCA":         {mx509.RootCACert, 0, true, true, false},
+		"intermediateCA": {mx509.IntermediateCACert, 0, true, false, false},
+		"OCSPSigning":    {mx509.OCSPSigningCert, 0, false, false, true},
+		"server":         {mx509.ServerCert, 0, false, false, false},
+		"client":         {mx509.ClientCert, 0, false, false, false},
 	}
 	certType, ok := theMap[typeString]
 	if ok {
@@ -59,6 +63,7 @@ func getCertType(typeString string) (*certInfo, error) {
 type Cert struct {
 	// Filled in by YAML unmarshalling
 	TypeString string `yaml:"type"`
+	ValidDays  int    `yaml:"valid"`
 	Issuer     string `yaml:"issuer"`
 	Subject    SubjectType
 	Hosts      []string `yaml:"hosts"`
@@ -159,8 +164,9 @@ func GetConfig(configFilename *string) error {
 	}
 
 	// Do some setup on the certificate configurations
-	// - fill in the Type, IsSelfSigned, and  IsCA field for each certificate
+	// - fill in the Type, IsSelfSigned, and IsCA field for each certificate
 	// - fill in default subject fields
+	// - fill in default number of days valid
 	// - make sure self-signed certs don't have issuer
 	// - fill in issuer pointer for cert's issuer
 	// - make sure issuer-signed certs have an issuer that is a CA
@@ -173,6 +179,9 @@ func GetConfig(configFilename *string) error {
 		cert.IsCA = certType.isCA
 		cert.IsSelfSigned = certType.isSelfSigned
 		cert.IsOCSPSigner = certType.isOCSPSigner
+		if cert.ValidDays == 0 {
+			cert.ValidDays = defaultValidDays
+		}
 		if cert.Subject.O == "" {
 			cert.Subject.O = Config.Subject.O
 		}

@@ -8,11 +8,12 @@ import (
 
 func TestCreateCert(t *testing.T) {
 	rcertInfo := CertInfo{
-		CertType: RootCACert,
-		O:        "Otest",
-		OU:       "OUtest",
-		CN:       "CNtest",
-		Hosts:    nil,
+		CertType:  RootCACert,
+		ValidDays: 42,
+		O:         "Otest",
+		OU:        "OUtest",
+		CN:        "CNtest",
+		Hosts:     nil,
 	}
 	// test a root CA
 	rpriv, _, err := CreatePrivateKey()
@@ -26,11 +27,12 @@ func TestCreateCert(t *testing.T) {
 	checkCert(t, rcert, rcertPEM)
 	// test a server cert
 	scertInfo := CertInfo{
-		CertType: ServerCert,
-		O:        "Otest",
-		OU:       "OUtest",
-		CN:       "CNtest",
-		Hosts:    []string{"example.com"},
+		CertType:  ServerCert,
+		ValidDays: 24,
+		O:         "Otest",
+		OU:        "OUtest",
+		CN:        "CNtest",
+		Hosts:     []string{"example.com"},
 	}
 	spriv, _, err := CreatePrivateKey()
 	if err != nil {

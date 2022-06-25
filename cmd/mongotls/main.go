@@ -13,7 +13,7 @@ func main() {
 	var (
 		versionp       = flag.Bool("version", false, "Print version and exit")
 		configFilename = flag.String("f", "mongodb-tls.yaml", "Config file path/name")
-		replaceFilesP = flag.Bool("erase", false, "Erase all files from directories before generating new ones")
+		replaceFilesP  = flag.Bool("erase", false, "Erase all files from directories before generating new ones")
 	)
 	flag.Parse()
 
@@ -104,18 +104,18 @@ func createCombos() error {
 }
 
 func createKeyFiles() error {
-	for _, fn := range config.Config.KeyFiles {
-		err := createKeyFile(fn)
+	for keyfileName := range config.Config.KeyFiles {
+		err := createKeyFile(keyfileName)
 		if err != nil {
-			log.Fatalf("Error creating keyfile '%s': %v", fn, err)
+			log.Fatalf("Error creating keyfile '%s': %v", keyfileName, err)
 		}
 	}
 	return nil
 }
 
 func createSSHKeys() error {
-	for sshKeyName := range config.Config.SSHKeys {
-		err := createSSHKey(sshKeyName)
+	for sshKeyName, sshKeyPair := range config.Config.SSHKeyPairs {
+		err := createSSHKey(sshKeyName, sshKeyPair.RSABits)
 		if err != nil {
 			log.Fatalf("Error creating SSH key '%s': %v", sshKeyName, err)
 		}

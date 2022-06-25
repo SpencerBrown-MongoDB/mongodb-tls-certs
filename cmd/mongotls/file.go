@@ -19,7 +19,7 @@ import (
 // given filename, type of cert, parameters, signing key, and signing cert
 // returns private key and certificate
 func createKeyCert(certName string, configCert *config.Cert, CAkey crypto.PrivateKey, CACert *x509.Certificate) (crypto.PrivateKey, *x509.Certificate, error) {
-	privateKey, err := createPrivateKey(certName, config.Config.ExtensionKey)
+	privateKey, err := createPrivateKey(certName, config.Config.ExtensionKey, configCert.RSABits)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating %s private key: %v", certName, err)
 	}
@@ -70,8 +70,8 @@ func createKeyFile(filename string) error {
 }
 
 // createSSHKey creates an SSH keypair and writes it to the file "filename" and "filename.pub"
-func createSSHKey(filename string) error {
-	key, PEMkey, err := mx509.CreatePrivateKey()
+func createSSHKey(filename string, rsabits int) error {
+	key, PEMkey, err := mx509.CreatePrivateKey(rsabits)
 	if err != nil {
 		return fmt.Errorf("error creating private SSH key: %v", err)
 	}
@@ -92,8 +92,8 @@ func createSSHKey(filename string) error {
 }
 
 // createPrivateKey creates private key and writes it to the file "filename.ext" in PEM format
-func createPrivateKey(filename string, ext string) (crypto.PrivateKey, error) {
-	key, PEMkey, err := mx509.CreatePrivateKey()
+func createPrivateKey(filename string, ext string, rsaBits int) (crypto.PrivateKey, error) {
+	key, PEMkey, err := mx509.CreatePrivateKey(rsaBits)
 	if err != nil {
 		return nil, fmt.Errorf("error creating private key %v", err)
 	}

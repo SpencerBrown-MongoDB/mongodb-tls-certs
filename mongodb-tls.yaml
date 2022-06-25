@@ -27,16 +27,19 @@ subject:
 
 # Create keyfiles; keyfiles are files with 32 random bytes stored in base64 format (44 bytes total)
 keyfiles:
-  - keyfile
+  keyfile:
 
 # Create SSH keypairs; these are like filename (private key) and filename.pub (public key)
-sshkeys:
+sshkeypairs:
   tls/clients/spencer.brown:
+  tls/clients/joe.smith:
+    rsabits: 4096
 
 # Create certificates and keys
 certificates:
   root-ca:
     type: rootCA
+    rsabits: 4096
     valid: 7300
     subject:
       O: MongoDB

@@ -94,6 +94,7 @@ certificates:
 The YAML keys underneath the name of the certificate/key are the following:
 
 * `type:` -- can be rootCA, intermediateCA, server, client, or OCSPSigning.
+* `rsabits` -- size of the RSA private key, default is 2048.
 * `valid:` -- number of days before certificate expires. Default is 90. 
 * `subject:` -- beginning of a section for the subject name. Can contain sub-keys O:, OU: and/or CN:. 
 * `issuer:` -- name of the CA to sign this certificate.
@@ -101,11 +102,23 @@ The YAML keys underneath the name of the certificate/key are the following:
 
 ### keyfiles
 
-The keyfiles section specifies names of keyfiles to be generated.
+The keyfiles section specifies keyfiles to be generated. For example, to generate a keyfile with filename "mykeyfile.key":
 
-### sshkeys
+```yaml
+keyfiles: 
+  mykeyfile:
+```
 
-The sshkeys section specifies names; each name generates an SSH private/public key pair in files, where the public key has a ".pub" extension. 
+### sshkeypairs
+
+The sshkeypairs section generates SSH private/public key pair in files, where the public key has a ".pub" extension. The optional "rsabits: N" specifies the RSA keylength (default 2048). For example, the following generates keypairs named "spencer.brown" and "joe.smith" (4096-bit RSA key) in the "tls/clients" directory. 
+
+```yaml
+sshkeypairs:
+  tls/clients/spencer.brown:
+  tls/clients/joe.smith:
+    rsabits: 4096
+```
 
 ### combos
 

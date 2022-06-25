@@ -22,6 +22,9 @@ const (
 	defaultExtensionSSHCert = "cer"
 )
 
+// default for RSA key bit length
+const defaultRSABits = 2048
+
 // default for number of days certificate is valid
 const defaultValidDays = 90
 
@@ -29,6 +32,7 @@ const defaultValidDays = 90
 type certInfo struct {
 	ctype        int  // certificate type
 	validDays    int  // How many days to ve valid?
+	rsaBits      int  // How many bits for RSA key?
 	isCA         bool // is it a CA?
 	isSelfSigned bool // is it self-signed?
 	isOCSPSigner bool // Is it an OCSP signer?
@@ -44,11 +48,11 @@ type SubjectType struct {
 // getCertType converts a type string to information about the kind of certificate it is
 func getCertType(typeString string) (*certInfo, error) {
 	theMap := map[string]certInfo{
-		"rootCA":         {mx509.RootCACert, 0, true, true, false},
-		"intermediateCA": {mx509.IntermediateCACert, 0, true, false, false},
-		"OCSPSigning":    {mx509.OCSPSigningCert, 0, false, false, true},
-		"server":         {mx509.ServerCert, 0, false, false, false},
-		"client":         {mx509.ClientCert, 0, false, false, false},
+		"rootCA":         {mx509.RootCACert, 0, 0, true, true, false},
+		"intermediateCA": {mx509.IntermediateCACert, 0, 0, true, false, false},
+		"OCSPSigning":    {mx509.OCSPSigningCert, 0, 0, false, false, true},
+		"server":         {mx509.ServerCert, 0, 0, false, false, false},
+		"client":         {mx509.ClientCert, 0, 0, false, false, false},
 	}
 	certType, ok := theMap[typeString]
 	if ok {
@@ -67,6 +71,7 @@ type Cert struct {
 	Issuer     string `yaml:"issuer"`
 	Subject    SubjectType
 	Hosts      []string `yaml:"hosts"`
+	RSABits    int      `yaml:"rsabits"`
 	// Created programmatically
 	Type         int               `yaml:"-"`
 	IsCA         bool              `yaml:"-"`
@@ -77,8 +82,13 @@ type Cert struct {
 	IssuerCert   *Cert             `yaml:"-"`
 }
 
-// SSHKeys type represents a request for SSH keys. No options (yet).
-type SSHKeys struct {
+// SSHKeyPair type represents a request for SSH keys.
+type SSHKeyPair struct {
+	RSABits int `yaml:"rsabits"`
+}
+
+// KeyFile type represents a request for a keyfile, which is a random 32 binary bytes converted to base64 text
+type KeyFile struct {
 }
 
 // ConfigT type is the internal representation of the entire config file,
@@ -88,10 +98,10 @@ type ConfigT struct {
 	Directories  map[string]string `yaml:"directories"`
 	Extensions   map[string]string `yaml:"extensions"`
 	Subject      SubjectType
-	KeyFiles     []string            `yaml:"keyfiles"`
-	Certificates map[string]*Cert    `yaml:"certificates"`
-	SSHKeys      map[string]*SSHKeys `yaml:"sshkeys"`
-	Combos       map[string][]string `yaml:"combos"`
+	KeyFiles     map[string]*KeyFile    `yaml:"keyfiles"`
+	Certificates map[string]*Cert       `yaml:"certificates"`
+	SSHKeyPairs  map[string]*SSHKeyPair `yaml:"sshkeypairs"`
+	Combos       map[string][]string    `yaml:"combos"`
 	// filled in programmatically
 	PublicDirectory  string `yaml:"-"`
 	PrivateDirectory string `yaml:"-"`
@@ -163,10 +173,20 @@ func GetConfig(configFilename *string) error {
 		}
 	}
 
+	// Set default RSA bits for SSH key pairs if not specified
+	for sshKeyPairName, sshKeyPair := range Config.SSHKeyPairs {
+		if sshKeyPair == nil {
+			Config.SSHKeyPairs[sshKeyPairName] = &SSHKeyPair{
+				RSABits: defaultRSABits,
+			}
+		}
+	}
+
 	// Do some setup on the certificate configurations
 	// - fill in the Type, IsSelfSigned, and IsCA field for each certificate
 	// - fill in default subject fields
 	// - fill in default number of days valid
+	// - fill in default RSA key size
 	// - make sure self-signed certs don't have issuer
 	// - fill in issuer pointer for cert's issuer
 	// - make sure issuer-signed certs have an issuer that is a CA
@@ -181,6 +201,9 @@ func GetConfig(configFilename *string) error {
 		cert.IsOCSPSigner = certType.isOCSPSigner
 		if cert.ValidDays == 0 {
 			cert.ValidDays = defaultValidDays
+		}
+		if cert.RSABits == 0 {
+			cert.RSABits = defaultRSABits
 		}
 		if cert.Subject.O == "" {
 			cert.Subject.O = Config.Subject.O

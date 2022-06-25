@@ -8,7 +8,7 @@ import (
 // this alwo tests GetPrivateKey, more or less
 
 func TestCreatePrivateKey(t *testing.T) {
-	key, pem, err := CreatePrivateKey()
+	key, pem, err := CreatePrivateKey(2048)
 	if err != nil {
 		t.Errorf("error creating private key: %v", err)
 	}

@@ -24,15 +24,49 @@ const (
 )
 
 type CertInfo struct {
-	CertType int // certificate type
+	CertType  int // certificate type
 	ValidDays int // how many days it should remain valid
-	O        string
-	OU       string
-	CN       string
-	Hosts    []string
+	O         string
+	OU        string
+	CN        string
+	Hosts     []string
 }
 
-// CreateCert creates a certificate from a private key and a CA or self-signed
+// CreateCSR creates a private key and certificate signing request, currently only for a client certificate.
+// the CertInfo needs only the CertType to be Client, and the O/OU/CN filled in for the Subject Name.
+func CreateCSR(certInfo *CertInfo, key crypto.PrivateKey) ([]byte, error) {
+	switch certInfo.CertType {
+	case ClientCert:
+		var org, orgUnit []string
+		if certInfo.O != "" {
+			org = []string{certInfo.O}
+		}
+		if certInfo.OU != "" {
+			orgUnit = []string{certInfo.OU}
+		}
+		template := x509.CertificateRequest{
+			Subject: pkix.Name{
+				Organization:       org,
+				OrganizationalUnit: orgUnit,
+				CommonName:         certInfo.CN,
+			},
+		}
+		csrDER, err := x509.CreateCertificateRequest(rand.Reader, &template, key)
+		if err != nil {
+			return nil, fmt.Errorf("error creating CSR: %v", err)
+		}
+		csrPEM := pem.Block{
+			Type:    "CERTIFICATE REQUEST",
+			Headers: nil,
+			Bytes:   csrDER,
+		}
+		return pem.EncodeToMemory(&csrPEM), nil
+	default:
+		return nil, fmt.Errorf("unsupported certificate type (only client CSRs currently supported)")
+	}
+}
+
+// CreateCert creates a certificate from a private key and a CA, or a self-signed certificate
 // a flag controls what kind of certificate is generated
 // returns the certificate, and a byte slice PEM-formatted version
 func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateKey, CACert *x509.Certificate) (*x509.Certificate, []byte, error) {
@@ -72,7 +106,7 @@ func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateK
 
 	var derBytes []byte
 	switch certInfo.CertType {
-	case ServerCert: // Can authenticate as client or server, has SAN with DNS names
+	case ServerCert: // Can authenticate as client or server, has SAN with DNS names and IP addresses
 		var DNSNames = make([]string, 0)
 		var IPAddresses = make([]net.IP, 0)
 		for _, h := range certInfo.Hosts {
@@ -91,12 +125,12 @@ func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateK
 		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
-	case RootCACert: // Can sign certificates, is a CA
+	case RootCACert: // Can sign certificates, is a CA, is self-signed
 		template.IsCA = true
 		keyUsage |= x509.KeyUsageCertSign
 		template.KeyUsage = keyUsage
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, &template, publicKey(key), key)
-	case IntermediateCACert: // Can sign certificates, is a CA
+	case IntermediateCACert: // Can sign certificates, is a CA signed by another CA
 		template.IsCA = true
 		keyUsage |= x509.KeyUsageCertSign
 		keyUsage |= x509.KeyUsageCRLSign
@@ -136,6 +170,19 @@ func GetCertificate(pemCert []byte) (*x509.Certificate, error) {
 		return nil, fmt.Errorf("error parsing X.509 certificate: %v", err)
 	}
 	return cert, nil
+}
+
+// GetCSR gets the certificate from a PEM-format byte slice
+func GetCSR(pemCSR []byte) (*x509.CertificateRequest, error) {
+	pemBlock, _ := pem.Decode(pemCSR)
+	if pemBlock == nil || pemBlock.Type != "CERTIFICATE REQUEST" {
+		return nil, fmt.Errorf("invalid PEM CSR")
+	}
+	csr, err := x509.ParseCertificateRequest(pemBlock.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing X.509 CSR: %v", err)
+	}
+	return csr, nil
 }
 
 // publicKey gets the public key from a private key

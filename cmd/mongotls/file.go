@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto"
-	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"io/fs"
@@ -12,7 +11,6 @@ import (
 
 	"github.com/SpencerBrown/mongodb-tls-certs/config"
 	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
-	"golang.org/x/crypto/ssh"
 )
 
 // createKeyCert writes a private key and cert file
@@ -69,22 +67,14 @@ func createKeyFile(filename string) error {
 	return nil
 }
 
-// createSSHKey creates an SSH keypair and writes it to the file "filename" and "filename.pub"
-func createSSHKey(filename string, rsabits int) error {
-	key, PEMkey, err := mx509.CreatePrivateKey(rsabits)
-	if err != nil {
-		return fmt.Errorf("error creating private SSH key: %v", err)
-	}
-	err = writeFile(filename, config.Config.ExtensionSSHKey, PEMkey, true)
+// createSSHKeyPair creates an SSH keypair and writes it to the file "filename" and "filename.pub"
+func createSSHKeyPair(filename string, rsabits int) error {
+	_, pubBytes, _, privPEM, err := mx509.CreateSSHKeyPair(rsabits)
+	err = writeFile(filename, config.Config.ExtensionSSHKey, privPEM, true)
 	if err != nil {
 		return fmt.Errorf("error writing private SSH key file '%s': %v", filename, err)
 	}
-	publicSSHKey, err := ssh.NewPublicKey(&(key.(*rsa.PrivateKey)).PublicKey)
-	if err != nil {
-		return fmt.Errorf("error creating public SSH key: %v", err)
-	}
-	publicSSHKeyBytes := ssh.MarshalAuthorizedKey(publicSSHKey)
-	err = writeFile(filename, config.Config.ExtensionSSHPub, publicSSHKeyBytes, false)
+	err = writeFile(filename, config.Config.ExtensionSSHPub, pubBytes, false)
 	if err != nil {
 		return fmt.Errorf("error writing public SSH key file '%s': %v", filename, err)
 	}

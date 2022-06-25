@@ -10,7 +10,7 @@ import (
 )
 
 // CreatePrivateKey returns a PKCS#8 formatted private key which is not encrypted
-// it is an RSA 2048-bit private key.
+// it is an RSA private key of the specified length.
 // it is returned as a pointer to an rsa.PrivateKey,
 // and also in PEM format as a byte slice.
 func CreatePrivateKey(rsabits int) (crypto.PrivateKey, []byte, error) {

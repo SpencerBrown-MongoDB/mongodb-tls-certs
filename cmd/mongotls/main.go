@@ -43,7 +43,7 @@ func main() {
 		log.Fatalf("Error creating certificates: %v", err)
 	}
 
-	err = createSSHKeys()
+	err = createSSHKeyPairs()
 	if err != nil {
 		log.Fatalf("Error creating SSH keys: %v", err)
 	}
@@ -113,11 +113,11 @@ func createKeyFiles() error {
 	return nil
 }
 
-func createSSHKeys() error {
+func createSSHKeyPairs() error {
 	for sshKeyName, sshKeyPair := range config.Config.SSHKeyPairs {
-		err := createSSHKey(sshKeyName, sshKeyPair.RSABits)
+		err := createSSHKeyPair(sshKeyName, sshKeyPair.RSABits)
 		if err != nil {
-			log.Fatalf("Error creating SSH key '%s': %v", sshKeyName, err)
+			log.Fatalf("Error creating SSH keypair '%s': %v", sshKeyName, err)
 		}
 	}
 	return nil

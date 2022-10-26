@@ -1,7 +1,9 @@
-# Upload binaries to release S3 bucket
+# Set tags and upload binaries to GitHub release
+# Changes must be committed and pushed to main branch
+# make-build.sh must be run to create the build artifacts
+# SCRIPT MUST BE RUN FROM ROOT DIRECTORY OF THE REPOSITORY
 
-awssso --profile  "Support.User-600391573830"
 REL=$(cat latest)
-aws --profile "Support.User-600391573830" s3 cp release-binaries s3://ts-cloudws-tools/mongotls/$REL/ --recursive
-aws --profile Support.User-600391573830 s3 cp latest s3://ts-cloudws-tools/mongotls/
-aws --profile Support.User-600391573830 s3 cp README.md s3://ts-cloudws-tools/mongotls/
+git tag $REL
+git push --tags
+gh release -R github.com/SpencerBrown/mongodb-tls-certs create $REL --generate-notes  release-binaries/*

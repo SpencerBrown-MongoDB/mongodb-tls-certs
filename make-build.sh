@@ -4,11 +4,6 @@
 rm -r release-binaries
 mkdir release-binaries
 
-# Install locally
-
-go install ./cmd/mongotls
-printf $(mongotls --version) > latest
-
 # Linux on Intel
 GOOS=linux GOARCH=amd64 go build ./cmd/mongotls
 tar czf release-binaries/mongotls-linux.tar.gz mongotls
@@ -28,3 +23,8 @@ rm mongotls
 GOOS=darwin GOARCH=arm64 go build ./cmd/mongotls
 tar czf release-binaries/mongotls-macos-apple.tar.gz mongotls
 rm mongotls
+
+# Install locally
+
+go install ./cmd/mongotls
+printf $(mongotls --version) > latest

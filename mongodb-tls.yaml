@@ -39,6 +39,7 @@ sshkeypairs:
 certificates:
   root-ca:
     type: rootCA
+    encrypt: true
     rsabits: 4096
     valid: 7300
     subject:

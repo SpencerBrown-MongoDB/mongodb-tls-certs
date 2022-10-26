@@ -7,7 +7,7 @@ import (
 
 // CreateKeyFile creates a random 32 bytes and returns it as a byte64 encoded string.
 func CreateKeyFile() []byte {
-	r32 := make([]byte, 32, 32)
+	r32 := make([]byte, 32)
 	_, _ = rand.Read(r32)
 	return base64Encode(r32)
 }

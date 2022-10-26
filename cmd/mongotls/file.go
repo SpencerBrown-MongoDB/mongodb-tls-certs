@@ -17,7 +17,7 @@ import (
 // given filename, type of cert, parameters, signing key, and signing cert
 // returns private key and certificate
 func createKeyCert(certName string, configCert *config.Cert, CAkey crypto.PrivateKey, CACert *x509.Certificate) (crypto.PrivateKey, *x509.Certificate, error) {
-	privateKey, err := createPrivateKey(certName, config.Config.ExtensionKey, configCert.RSABits)
+	privateKey, err := createPrivateKey(certName, config.Config.ExtensionKey, configCert.RSABits, configCert.Encrypt)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating %s private key: %v", certName, err)
 	}
@@ -69,7 +69,10 @@ func createKeyFile(filename string) error {
 
 // createSSHKeyPair creates an SSH keypair and writes it to the file "filename" and "filename.pub"
 func createSSHKeyPair(filename string, rsabits int) error {
-	_, pubBytes, _, privPEM, err := mx509.CreateSSHKeyPair(rsabits)
+	_, pubBytes, _, privPEM, err := mx509.CreateSSHKeyPair(rsabits, false)
+	if err != nil {
+		return fmt.Errorf("error creating SSH keypair: %v", err)
+	}
 	err = writeFile(filename, config.Config.ExtensionSSHKey, privPEM, true)
 	if err != nil {
 		return fmt.Errorf("error writing private SSH key file '%s': %v", filename, err)
@@ -82,14 +85,17 @@ func createSSHKeyPair(filename string, rsabits int) error {
 }
 
 // createPrivateKey creates private key and writes it to the file "filename.ext" in PEM format
-func createPrivateKey(filename string, ext string, rsaBits int) (crypto.PrivateKey, error) {
-	key, PEMkey, err := mx509.CreatePrivateKey(rsaBits)
+func createPrivateKey(filename string, ext string, rsaBits int, encrypt bool) (crypto.PrivateKey, error) {
+	key, PEMkey, password, err := mx509.CreatePrivateKey(rsaBits, encrypt)
 	if err != nil {
 		return nil, fmt.Errorf("error creating private key %v", err)
 	}
 	err = writeFile(filename, ext, PEMkey, true)
 	if err != nil {
 		return nil, fmt.Errorf("error writing private key file: %v", err)
+	}
+	if password != "" {
+		fmt.Printf("NOTE:\n---> Private key for '%s' is encrypted. Here is the password: %s\n---> Copy this password to a secure location. It is REQUIRED to utilize this key.", filename, password)
 	}
 	return key, nil
 }

@@ -16,7 +16,7 @@ func TestCreateCert(t *testing.T) {
 		Hosts:     nil,
 	}
 	// test a root CA
-	rpriv, _, err := CreatePrivateKey(2048)
+	rpriv, _, _, err := CreatePrivateKey(2048, false)
 	if err != nil {
 		t.Errorf("error creating root CA private key: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestCreateCert(t *testing.T) {
 		CN:        "CNtest",
 		Hosts:     []string{"example.com"},
 	}
-	spriv, _, err := CreatePrivateKey(2048)
+	spriv, _, _, err := CreatePrivateKey(2048, false)
 	if err != nil {
 		t.Errorf("error creating server private key: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestCreateCSR(t *testing.T) {
 		OU:       "OUtest",
 		CN:       "CNtest",
 	}
-	csrpriv, _, err := CreatePrivateKey(4096)
+	csrpriv, _, _, err := CreatePrivateKey(4096, false)
 	if err != nil {
 		t.Fatalf("error creating private key for CSR: %v", err)
 	}

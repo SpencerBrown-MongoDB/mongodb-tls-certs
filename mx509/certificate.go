@@ -75,8 +75,7 @@ func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateK
 	// Only RSA subject keys should have the KeyEncipherment KeyUsage bits set. In the context of TLS this KeyUsage is particular to RSA key exchange and authentication.
 	keyUsage |= x509.KeyUsageKeyEncipherment
 
-	var notBefore time.Time
-	notBefore = time.Now()
+	var notBefore time.Time = time.Now()
 	notAfter := notBefore.AddDate(0, 0, certInfo.ValidDays) // good for this many days
 	var org, orgUnit []string
 	if certInfo.O != "" {

@@ -8,8 +8,8 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func CreateSSHKeyPair(rsabits int) (pub ssh.PublicKey, pubBytes []byte, priv crypto.PrivateKey, privPEM []byte, err error) {
-	priv, privPEM, err = CreatePrivateKey(rsabits)
+func CreateSSHKeyPair(rsabits int, encrypt bool) (pub ssh.PublicKey, pubBytes []byte, priv crypto.PrivateKey, privPEM []byte, err error) {
+	priv, privPEM, _, err = CreatePrivateKey(rsabits, false)
 	if err != nil {
 		return nil, nil, nil, nil, fmt.Errorf("error creating private SSH key: %v", err)
 	}

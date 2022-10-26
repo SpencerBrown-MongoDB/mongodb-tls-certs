@@ -68,6 +68,7 @@ type Cert struct {
 	// Filled in by YAML unmarshalling
 	TypeString string `yaml:"type"`
 	ValidDays  int    `yaml:"valid"`
+	Encrypt    bool   `yaml:"encrypt"`
 	Issuer     string `yaml:"issuer"`
 	Subject    SubjectType
 	Hosts      []string `yaml:"hosts"`

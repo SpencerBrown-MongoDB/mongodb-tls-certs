@@ -9,8 +9,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SpencerBrown/mongodb-tls-certs/config"
-	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
+	"github.com/SpencerBrown-MongoDB/mongodb-tls-certs/config"
+	"github.com/SpencerBrown-MongoDB/mongodb-tls-certs/mx509"
 )
 
 // createKeyCert writes a private key and cert file
@@ -201,7 +201,7 @@ func getFilePaths(prefix string, extension string, private bool) (fileName strin
 	} else {
 		fileName = prefixBase + "." + extension
 	}
-	os.MkdirAll(thisDir, 0755)
+	_ = os.MkdirAll(thisDir, 0755)
 	fileName = filepath.Join(thisDir, fileName)
 	_, err := os.Stat(fileName)
 	switch err {

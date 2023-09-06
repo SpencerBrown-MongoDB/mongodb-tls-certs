@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/SpencerBrown/mongodb-tls-certs/config"
+	"github.com/SpencerBrown-MongoDB/mongodb-tls-certs/config"
 )
 
 func main() {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/SpencerBrown/mongodb-tls-certs/mx509"
+	"github.com/SpencerBrown-MongoDB/mongodb-tls-certs/mx509"
 	"gopkg.in/yaml.v3"
 )
 

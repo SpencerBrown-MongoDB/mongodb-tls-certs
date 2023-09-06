@@ -6,4 +6,4 @@
 REL=$(cat latest)
 git tag $REL
 git push --tags
-gh release -R github.com/SpencerBrown/mongodb-tls-certs create $REL --generate-notes  release-binaries/*
+gh release -R github.com/SpencerBrown-MongoDB/mongodb-tls-certs create $REL --generate-notes  release-binaries/*

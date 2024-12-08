@@ -27,7 +27,8 @@ func CreatePrivateKey(rsabits int, encrypt bool) (crypto.PrivateKey, []byte, str
 	if err != nil {
 		return nil, nil, "", err
 	}
-	//TODO if encrypt true, create encrypted private key using x509.EncryptPEMBlock
+	//TODO use the youmark package to create the encrypted PKCS8 key
+
 	privBlk := pem.Block{
 		Type:    "PRIVATE KEY",
 		Headers: nil,
@@ -39,7 +40,7 @@ func CreatePrivateKey(rsabits int, encrypt bool) (crypto.PrivateKey, []byte, str
 // GetPrivateKey gets the private kay from a PEM-format byte slice
 func GetPrivateKey(pemKey []byte) (crypto.PrivateKey, error) {
 	pemBlock, _ := pem.Decode(pemKey)
-	// TODO handle encrypted private keys
+	// TODO handle encrypted private keys using the local pkcs8 package
 	if pemBlock == nil || pemBlock.Type != "PRIVATE KEY" {
 		return nil, fmt.Errorf("invalid PEM private key")
 	}

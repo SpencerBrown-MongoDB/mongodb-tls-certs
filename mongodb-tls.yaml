@@ -69,6 +69,13 @@ certificates:
     issuer: signing-ca
     subject:
       OU: Client
+  serverclient:
+    type: serverclient
+    issuer: signing-ca
+    subject:
+      OU: ServerClient
+    hosts:
+      - mongodb-local.computer  
 
 # Create combined files
 combos:
@@ -79,6 +86,9 @@ combos:
   client-key-cert:
     - client.key
     - client.pem
+  serverclient-key-cert:
+    - serverclient.key
+    - serverclient.pem
   # the combined file with the CA certificate chain
   ca-chain:
     - signing-ca.pem

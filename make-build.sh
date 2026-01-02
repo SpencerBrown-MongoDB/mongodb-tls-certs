@@ -6,7 +6,12 @@ mkdir release-binaries
 
 # Linux on Intel
 GOOS=linux GOARCH=amd64 go build ./cmd/mongotls
-tar czf release-binaries/mongotls-linux.tar.gz mongotls
+tar czf release-binaries/mongotls-linux-intel.tar.gz mongotls
+rm mongotls
+
+# Linux on Arm64
+GOOS=linux GOARCH=arm64 go build ./cmd/mongotls
+tar czf release-binaries/mongotls-linux-arm64.tar.gz mongotls
 rm mongotls
 
 # Windows on Intel

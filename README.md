@@ -12,6 +12,7 @@ Specifically, the command supports generating:
 * Intermediate CA certificates
 * Server certificates
 * Client certificates
+* "ServerClient" certificates, which authorize both server and client validation ("authentication" in TLS terms)
 * Signing certificates for OCSP responders
 * Combination files, such as for CA certificate chains or for MongoDB certificateKeyFile files that include both the private key and certificate for a MongoDB server
 * Keyfiles for MongoDB replica sets or for MongoDB local encryption-at-rest keys
@@ -93,7 +94,7 @@ certificates:
 
 The YAML keys underneath the name of the certificate/key are the following:
 
-* `type:` -- can be rootCA, intermediateCA, server, client, or OCSPSigning.
+* `type:` -- can be rootCA, intermediateCA, server, client, serverclient, or OCSPSigning.
 * `rsabits` -- size of the RSA private key, default is 2048.
 * `valid:` -- number of days before certificate expires. Default is 90. 
 * `subject:` -- beginning of a section for the subject name. Can contain sub-keys O:, OU: and/or CN:. 

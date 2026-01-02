@@ -21,6 +21,7 @@ const (
 	OCSPSigningCert
 	ServerCert
 	ClientCert
+	ServerClientCert
 )
 
 type CertInfo struct {
@@ -105,7 +106,7 @@ func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateK
 
 	var derBytes []byte
 	switch certInfo.CertType {
-	case ServerCert: // Can authenticate as client or server, has SAN with DNS names and IP addresses
+	case ServerClientCert: // Can authenticate as client or server, has SAN with DNS names and IP addresses
 		var DNSNames = make([]string, 0)
 		var IPAddresses = make([]net.IP, 0)
 		for _, h := range certInfo.Hosts {
@@ -119,6 +120,21 @@ func CreateCert(certInfo *CertInfo, key crypto.PrivateKey, CAkey crypto.PrivateK
 		template.IPAddresses = IPAddresses
 		template.KeyUsage = keyUsage
 		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth}
+		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
+	case ServerCert: // Can only authenticate client certificates, not act as client, has SAN with DNS names and IP addresses
+		var DNSNames = make([]string, 0)
+		var IPAddresses = make([]net.IP, 0)
+		for _, h := range certInfo.Hosts {
+			if ip := net.ParseIP(h); ip != nil {
+				IPAddresses = append(IPAddresses, ip)
+			} else {
+				DNSNames = append(DNSNames, h)
+			}
+		}
+		template.DNSNames = DNSNames
+		template.IPAddresses = IPAddresses
+		template.KeyUsage = keyUsage
+		template.ExtKeyUsage = []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth}
 		derBytes, err = x509.CreateCertificate(rand.Reader, &template, CACert, publicKey(key), CAkey)
 	case ClientCert: // Can authenticate as client
 		template.KeyUsage = keyUsage

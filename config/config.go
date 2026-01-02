@@ -53,6 +53,7 @@ func getCertType(typeString string) (*certInfo, error) {
 		"OCSPSigning":    {mx509.OCSPSigningCert, 0, 0, false, false, true},
 		"server":         {mx509.ServerCert, 0, 0, false, false, false},
 		"client":         {mx509.ClientCert, 0, 0, false, false, false},
+		"serverclient":   {mx509.ServerClientCert, 0, 0, false, false, false},
 	}
 	certType, ok := theMap[typeString]
 	if ok {
